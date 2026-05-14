@@ -10,41 +10,15 @@ const GROUPS = {
 };
 
 /* =========================
-   ■ タイトル正規化（強化版）
-========================= */
-const normalizeTitle = (title = "") => {
-  return title
-    .toLowerCase()
-    .replace(/【.*?】/g, "")
-    .replace(/\(.*?\)/g, "")
-    .replace(/スターバックスコーヒー/g, "スターバックス")
-    .replace(/[^\wぁ-んァ-ン一-龥]/g, "")
-    .slice(0, 50);
-};
-
-/* =========================
-   ■ 商品名っぽい部分抽出
-========================= */
-const extractCore = (title = "") => {
-  return normalizeTitle(title)
-    .replace(/新発売|発売|登場|限定|新作/g, "")
-    .replace(/202\d/g, "")
-    .slice(0, 30);
-};
-
-/* =========================
-   ■ ブランド判定（最強版）
+   ■ ブランド判定
 ========================= */
 const getBrand = (item) => {
   const text = (
     (item.title || "") +
-    (item.link || "") +
-    (item.desc || "") +
-    (item.raw || "")
+    (item.link || "")
   )
     .toLowerCase()
     .replace(/\s/g, "")
-    .replace(/’/g, "'")
     .replace(/スターバックスコーヒー/g, "スターバックス");
 
   if (/(lawson|ローソン)/.test(text)) return "ローソン";
@@ -71,59 +45,6 @@ const getBrandColor = (brand) => {
 };
 
 /* =========================
-   ■ 重複統合（ブランド×商品）
-========================= */
-const dedupeItems = (items) => {
-  const map = new Map();
-
-  items.forEach((item) => {
-    const brand = getBrand(item);
-    const core = extractCore(item.title);
-
-    const key = brand + "_" + core;
-
-    let foundKey = null;
-
-    for (let k of map.keys()) {
-      if (k.includes(key) || key.includes(k)) {
-        foundKey = k;
-        break;
-      }
-    }
-
-    if (foundKey) {
-      map.get(foundKey).push(item);
-    } else {
-      map.set(key, [item]);
-    }
-  });
-
-  return Array.from(map.values()).map((group) =>
-    group.sort((a, b) => new Date(b.date) - new Date(a.date))[0]
-  );
-};
-
-/* =========================
-   ■ 画像
-========================= */
-const getImage = (item) => {
-  const html = item.raw || "";
-
-  const img =
-    html.match(/<meta property="og:image" content="(.*?)"/)?.[1] ||
-    html.match(/<meta name="twitter:image" content="(.*?)"/)?.[1] ||
-    html.match(/<img[^>]+src="(.*?)"/)?.[1];
-
-  if (!img) return null;
-
-  try {
-    return new URL(img, item.link).href;
-  } catch {
-    return null;
-  }
-};
-
-/* =========================
    ■ 絵文字
 ========================= */
 const getEmoji = (text = "") => {
@@ -144,24 +65,21 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const run = async () => {
-      const data = await fetch("/api/news").then((r) => r.json());
-
-      const sorted = dedupeItems(
-        [...data].sort(
-          (a, b) => new Date(b.date) - new Date(a.date)
-        )
-      );
-
-      setItems(sorted);
-      setLoading(false);
-    };
-
-    run();
+    fetchData();
 
     const saved = localStorage.getItem("mint-fav");
     if (saved) setFavorites(JSON.parse(saved));
   }, []);
+
+  const fetchData = async () => {
+    try {
+      const res = await fetch("/api/news");
+      const data = await res.json();
+      setItems(data);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const toggleFav = (item) => {
     const exists = favorites.some((f) => f.link === item.link);
@@ -256,12 +174,23 @@ export default function Home() {
         ))}
       </div>
 
+      {/* ローディングUI */}
+      {loading && (
+        <>
+          <div style={{ marginBottom: 10, textAlign: "center", fontSize: 12 }}>
+            読み込み中...
+          </div>
+          {[1, 2, 3].map((i) => (
+            <div key={i} style={styles.skeleton} />
+          ))}
+        </>
+      )}
+
       {/* カード */}
       <div style={styles.grid}>
         {!loading &&
           filtered.map((item, i) => {
             const brand = getBrand(item);
-            const img = getImage(item);
 
             return (
               <a
@@ -283,19 +212,9 @@ export default function Home() {
                     </div>
                   )}
 
-                  {img ? (
-                    <img
-                      src={img}
-                      style={styles.img}
-                      onError={(e) =>
-                        (e.currentTarget.style.display = "none")
-                      }
-                    />
-                  ) : (
-                    <div style={styles.emojiBox}>
-                      {getEmoji(item.title)}
-                    </div>
-                  )}
+                  <div style={styles.emojiBox}>
+                    {getEmoji(item.title)}
+                  </div>
 
                   <div style={styles.titleText}>{item.title}</div>
 
@@ -358,14 +277,6 @@ const styles = {
     borderRadius: 6,
   },
 
-  img: {
-    width: "100%",
-    height: 160,
-    objectFit: "cover",
-    borderRadius: 10,
-    marginBottom: 8,
-  },
-
   emojiBox: {
     height: 160,
     display: "flex",
@@ -387,6 +298,14 @@ const styles = {
     fontSize: 11,
     color: "#666",
   },
+
+  skeleton: {
+    height: 180,
+    borderRadius: 14,
+    background: "#ffffff22",
+    marginBottom: 10,
+    animation: "pulse 1.5s infinite",
+  },
 };
 
 const tabBtn = (active) => ({
@@ -406,3 +325,16 @@ const filterBtn = (active) => ({
   color: "#fff",
   background: active ? "#00c6ff" : "#2a2f36",
 });
+
+/* アニメーション */
+if (typeof document !== "undefined") {
+  const style = document.createElement("style");
+  style.innerHTML = `
+    @keyframes pulse {
+      0% { opacity: 0.5; }
+      50% { opacity: 1; }
+      100% { opacity: 0.5; }
+    }
+  `;
+  document.head.appendChild(style);
+}
