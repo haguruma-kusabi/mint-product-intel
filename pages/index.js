@@ -23,7 +23,7 @@ const getBrand = (item) => {
 
   if (/(lawson|ローソン)/.test(text)) return "ローソン";
   if (/(7-?eleven|セブン|seven)/.test(text)) return "セブン";
-  if (/(familymart|ファミマ)/.test(text)) return "ファミマ";
+  if (/(familymart|ファミマ|ファミリーマート)/.test(text)) return "ファミマ";
 
   if (/(starbucks|スタバ|スターバックス|sbux)/.test(text)) return "スタバ";
   if (/(tully'?s|タリーズ|tully)/.test(text)) return "タリーズ";
