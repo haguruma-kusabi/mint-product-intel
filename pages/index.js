@@ -1,17 +1,11 @@
 import { useEffect, useState } from "react";
 
-/* =========================
-   ■ グループ定義
-========================= */
 const GROUPS = {
   コンビニ: ["ローソン", "セブン", "ファミマ"],
   カフェ: ["スタバ", "タリーズ", "ドトール"],
   メーカー: ["明治", "森永", "グリコ", "ロッテ"],
 };
 
-/* =========================
-   ■ UI
-========================= */
 export default function Home() {
   const [items, setItems] = useState([]);
   const [favorites, setFavorites] = useState([]);
@@ -21,22 +15,16 @@ export default function Home() {
   const [tab, setTab] = useState("all");
   const [loading, setLoading] = useState(true);
 
-  /* =========================
-     ■ 初期ロード
-  ========================= */
   useEffect(() => {
     const run = async () => {
       try {
         const data = await fetch("/api/news").then((r) => r.json());
 
-        // 新着順ソート（安全）
         const sorted = [...data].sort(
           (a, b) => new Date(b.date) - new Date(a.date)
         );
 
         setItems(sorted);
-      } catch (e) {
-        setItems([]);
       } finally {
         setLoading(false);
       }
@@ -50,9 +38,6 @@ export default function Home() {
     }
   }, []);
 
-  /* =========================
-     ■ お気に入り
-  ========================= */
   const toggleFav = (item) => {
     let updated;
 
@@ -72,9 +57,6 @@ export default function Home() {
   const isFav = (item) =>
     favorites.some((f) => f.link === item.link);
 
-  /* =========================
-     ■ ブランド判定
-  ========================= */
   const getBrand = (text = "") => {
     const t = text.toLowerCase();
 
@@ -94,9 +76,6 @@ export default function Home() {
     return "";
   };
 
-  /* =========================
-     ■ 絵文字
-  ========================= */
   const getEmoji = (text = "") => {
     if (/アイス|ice/.test(text)) return "🍨";
     if (/スイーツ|ケーキ/.test(text)) return "🍰";
@@ -105,9 +84,6 @@ export default function Home() {
     return "🍃";
   };
 
-  /* =========================
-     ■ フィルタ
-  ========================= */
   const toggleGroup = (g) => {
     setActiveGroups((prev) =>
       prev.includes(g)
@@ -142,14 +118,10 @@ export default function Home() {
     return true;
   });
 
-  /* =========================
-     ■ render
-  ========================= */
   return (
     <div style={styles.page}>
-      <h1 style={styles.title}>🍫 mint product intel</h1>
+      <h1 style={styles.title}>🍫 mint intel</h1>
 
-      {/* ■ タブ */}
       <div style={styles.tabRow}>
         <button onClick={() => setTab("all")} style={tabBtn(tab === "all")}>
           新着
@@ -159,7 +131,6 @@ export default function Home() {
         </button>
       </div>
 
-      {/* ■ 検索 */}
       <div style={styles.searchRow}>
         <input
           value={keyword}
@@ -180,7 +151,6 @@ export default function Home() {
         </select>
       </div>
 
-      {/* ■ フィルタ */}
       <div style={styles.filterRow}>
         {Object.keys(GROUPS).map((g) => (
           <button
@@ -193,16 +163,14 @@ export default function Home() {
         ))}
       </div>
 
-      {/* ■ ローディング */}
       {loading && (
         <div>
           {[1, 2, 3].map((i) => (
-            <div key={i} style={skeletonStyle} />
+            <div key={i} style={skeleton} />
           ))}
         </div>
       )}
 
-      {/* ■ カード */}
       <div style={styles.grid}>
         {!loading &&
           filtered.map((item, i) => {
@@ -210,31 +178,35 @@ export default function Home() {
 
             return (
               <div key={i} style={styles.card}>
+                {/* ■ ブランド（上固定） */}
                 {brand && (
                   <div style={styles.badgeBrand}>{brand}</div>
                 )}
 
-                <div style={styles.header}>
+                {/* ■ アイコン行 */}
+                <div style={styles.iconRow}>
                   <span style={styles.emoji}>
                     {getEmoji(item.title)}
                   </span>
+                </div>
 
+                {/* ■ タイトル */}
+                <div style={styles.titleText}>{item.title}</div>
+
+                {/* ■ ★ 完全分離メタ行（競合解消ポイント） */}
+                <div style={styles.metaRow}>
                   <span style={styles.date}>
                     {new Date(item.date).toLocaleDateString()}
                   </span>
-                </div>
 
-                <div style={styles.titleText}>{item.title}</div>
-
-                <div style={styles.footer}>
                   <button onClick={() => toggleFav(item)} style={favBtn}>
                     {isFav(item) ? "❤️" : "🤍"}
                   </button>
-
-                  <a href={item.link} target="_blank" style={styles.link}>
-                    記事 →
-                  </a>
                 </div>
+
+                <a href={item.link} target="_blank" style={styles.link}>
+                  記事 →
+                </a>
               </div>
             );
           })}
@@ -244,12 +216,12 @@ export default function Home() {
 }
 
 /* =========================
-   ■ 安全関数（ここ重要）
+   ■ 安全関数
 ========================= */
 
 const tabBtn = (active) => ({
   flex: 1,
-  padding: "6px",
+  padding: 6,
   borderRadius: 10,
   border: "none",
   fontSize: 12,
@@ -262,8 +234,8 @@ const filterBtn = (active) => ({
   padding: 6,
   borderRadius: 10,
   border: "none",
-  color: "#fff",
   fontSize: 12,
+  color: "#fff",
   background: active ? "#00c6ff" : "#2a2f36",
 });
 
@@ -272,10 +244,7 @@ const favBtn = {
   background: "transparent",
 };
 
-/* =========================
-   ■ skeleton
-========================= */
-const skeletonStyle = {
+const skeleton = {
   height: 120,
   marginBottom: 10,
   borderRadius: 12,
@@ -348,17 +317,24 @@ const styles = {
     boxShadow: "0 6px 18px rgba(0,0,0,0.25)",
   },
 
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    fontSize: 12,
-    color: "#666",
+  badgeBrand: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    background: "#333",
+    color: "#fff",
+    fontSize: 10,
+    padding: "2px 6px",
+    borderRadius: 6,
+  },
+
+  iconRow: {
     marginBottom: 6,
   },
 
-  emoji: { fontSize: 20 },
-
-  date: { fontSize: 11 },
+  emoji: {
+    fontSize: 20,
+  },
 
   titleText: {
     fontSize: 14,
@@ -366,25 +342,22 @@ const styles = {
     marginBottom: 8,
   },
 
-  footer: {
+  metaRow: {
     display: "flex",
     justifyContent: "space-between",
+    alignItems: "center",
+    fontSize: 11,
+    color: "#666",
+    marginBottom: 6,
+  },
+
+  date: {
+    fontSize: 11,
   },
 
   link: {
     fontSize: 12,
     color: "#007aff",
     textDecoration: "none",
-  },
-
-  badgeBrand: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    background: "#333",
-    padding: "2px 6px",
-    borderRadius: 6,
-    fontSize: 10,
-    color: "#fff",
   },
 };
