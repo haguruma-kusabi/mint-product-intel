@@ -1,12 +1,23 @@
 import { useEffect, useState } from "react";
 
+const GROUPS = {
+  コンビニ: ["ローソン", "セブン", "ファミマ"],
+  カフェ: ["スタバ", "タリーズ", "ドトール"],
+  メーカー: ["明治", "森永", "グリコ", "ロッテ"],
+};
+
 export default function Home() {
   const [items, setItems] = useState([]);
+  const [keyword, setKeyword] = useState("");
+  const [activeGroups, setActiveGroups] = useState([]);
+  const [range, setRange] = useState(14);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const run = async () => {
       const data = await fetch("/api/news").then((r) => r.json());
       setItems(data);
+      setLoading(false);
     };
     run();
   }, []);
@@ -38,66 +49,141 @@ export default function Home() {
     return "🍃";
   };
 
-  const isNew = (date) => {
-    const diff =
-      (new Date() - new Date(date)) / (1000 * 60 * 60 * 24);
-    return diff < 2;
+  const isNew = (date) =>
+    (new Date() - new Date(date)) / (1000 * 60 * 60 * 24) < 2;
+
+  const toggleGroup = (g) => {
+    setActiveGroups((prev) =>
+      prev.includes(g)
+        ? prev.filter((x) => x !== g)
+        : [...prev, g]
+    );
   };
+
+  const filtered = items.filter((item) => {
+    const text = item.title.toLowerCase();
+
+    if (keyword && !text.includes(keyword.toLowerCase()))
+      return false;
+
+    const brand = getBrand(item.title + item.link);
+
+    if (activeGroups.length > 0) {
+      const ok = activeGroups.some((g) =>
+        GROUPS[g].includes(brand)
+      );
+      if (!ok) return false;
+    }
+
+    const diff =
+      (new Date() - new Date(item.date)) /
+      (1000 * 60 * 60 * 24);
+
+    if (diff > range) return false;
+
+    return true;
+  });
 
   return (
     <div style={styles.page}>
       <h1 style={styles.title}>🍫 mint product intel</h1>
 
+      {/* ■ 検索 */}
+      <div style={styles.searchRow}>
+        <input
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          placeholder="検索"
+          style={styles.search}
+        />
+
+        <select
+          value={range}
+          onChange={(e) => setRange(Number(e.target.value))}
+          style={styles.select}
+        >
+          <option value={3}>3日</option>
+          <option value={7}>7日</option>
+          <option value={14}>14日</option>
+          <option value={30}>30日</option>
+        </select>
+      </div>
+
+      {/* ■ フィルタ */}
+      <div style={styles.filterRow}>
+        {Object.keys(GROUPS).map((g) => (
+          <button
+            key={g}
+            onClick={() => toggleGroup(g)}
+            style={{
+              ...styles.filterBtn,
+              background: activeGroups.includes(g)
+                ? "#00c6ff"
+                : "#2a2f36",
+            }}
+          >
+            {g}
+          </button>
+        ))}
+      </div>
+
+      {/* ■ ローディング */}
+      {loading && (
+        <div>
+          {[1, 2, 3].map((i) => (
+            <div key={i} style={styles.skeleton} />
+          ))}
+        </div>
+      )}
+
+      {/* ■ カード */}
       <div style={styles.grid}>
-        {items.map((item, i) => {
-          const brand = getBrand(item.title + item.link);
+        {!loading &&
+          filtered.map((item, i) => {
+            const brand = getBrand(item.title + item.link);
 
-          return (
-            <div key={i} style={styles.card}>
+            return (
+              <div key={i} style={styles.card}>
+                {isNew(item.date) && (
+                  <div style={styles.badgeNew}>NEW</div>
+                )}
 
-              {/* バッジ */}
-              {isNew(item.date) && (
-                <div style={styles.badgeNew}>NEW</div>
-              )}
-              {brand && (
-                <div style={styles.badgeBrand}>{brand}</div>
-              )}
+                {brand && (
+                  <div style={styles.badgeBrand}>{brand}</div>
+                )}
 
-              {/* ヘッダー */}
-              <div style={styles.header}>
-                <span style={styles.emoji}>
-                  {getEmoji(item.title)}
-                </span>
+                <div style={styles.header}>
+                  <span style={styles.emoji}>
+                    {getEmoji(item.title)}
+                  </span>
 
-                <div style={styles.date}>
-                  {new Date(item.date).toLocaleDateString()}
+                  <span style={styles.date}>
+                    {new Date(item.date).toLocaleDateString()}
+                  </span>
+                </div>
+
+                <div style={styles.titleText}>
+                  {item.title}
+                </div>
+
+                <div style={styles.footer}>
+                  <a
+                    href={item.link}
+                    target="_blank"
+                    style={styles.link}
+                  >
+                    記事を読む →
+                  </a>
                 </div>
               </div>
-
-              {/* タイトル */}
-              <div style={styles.titleText}>
-                {item.title}
-              </div>
-
-              {/* アクション */}
-              <div style={styles.footer}>
-                <a
-                  href={item.link}
-                  target="_blank"
-                  style={styles.link}
-                >
-                  記事を読む →
-                </a>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
       </div>
     </div>
   );
 }
 
-/* ■ styles（強化版UI復元） */
+/* ■ styles */
 
 const styles = {
   page: {
@@ -108,13 +194,48 @@ const styles = {
     background:
       "linear-gradient(180deg,#0f2027,#203a43,#2c5364)",
     color: "#fff",
-    fontFamily: "sans-serif",
   },
 
   title: {
     textAlign: "center",
     fontSize: 18,
-    marginBottom: 14,
+    marginBottom: 12,
+  },
+
+  searchRow: {
+    display: "flex",
+    gap: 6,
+    marginBottom: 10,
+  },
+
+  search: {
+    flex: 2,
+    padding: "6px 10px",
+    borderRadius: 12,
+    border: "none",
+    fontSize: 13,
+  },
+
+  select: {
+    flex: 1,
+    borderRadius: 10,
+    border: "none",
+    fontSize: 12,
+  },
+
+  filterRow: {
+    display: "flex",
+    gap: 6,
+    marginBottom: 12,
+  },
+
+  filterBtn: {
+    flex: 1,
+    padding: 6,
+    borderRadius: 12,
+    border: "none",
+    color: "#fff",
+    fontSize: 12,
   },
 
   grid: {
@@ -134,25 +255,20 @@ const styles = {
   header: {
     display: "flex",
     justifyContent: "space-between",
-    marginBottom: 6,
     fontSize: 12,
     color: "#666",
+    marginBottom: 6,
   },
 
-  emoji: {
-    fontSize: 20,
-  },
+  emoji: { fontSize: 20 },
 
-  date: {
-    fontSize: 11,
-  },
+  date: { fontSize: 11 },
 
   titleText: {
     fontSize: 14,
     fontWeight: "bold",
     lineHeight: 1.4,
     marginBottom: 10,
-
     display: "-webkit-box",
     WebkitLineClamp: 2,
     WebkitBoxOrient: "vertical",
@@ -175,10 +291,9 @@ const styles = {
     top: 8,
     left: 8,
     background: "#00c6ff",
-    color: "#fff",
-    fontSize: 10,
     padding: "2px 6px",
     borderRadius: 6,
+    fontSize: 10,
   },
 
   badgeBrand: {
@@ -186,9 +301,16 @@ const styles = {
     top: 8,
     right: 8,
     background: "#333",
-    color: "#fff",
-    fontSize: 10,
     padding: "2px 6px",
     borderRadius: 6,
+    fontSize: 10,
+    color: "#fff",
+  },
+
+  skeleton: {
+    height: 120,
+    marginBottom: 10,
+    borderRadius: 12,
+    background: "#ffffff22",
   },
 };
