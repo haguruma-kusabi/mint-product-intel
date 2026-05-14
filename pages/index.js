@@ -48,15 +48,15 @@ export default function Home() {
     }
 
     setFavorites(updated);
-
-    if (typeof window !== "undefined") {
-      localStorage.setItem("mint-fav", JSON.stringify(updated));
-    }
+    localStorage.setItem("mint-fav", JSON.stringify(updated));
   };
 
   const isFav = (item) =>
     favorites.some((f) => f.link === item.link);
 
+  /* =========================
+     ■ ブランド判定
+  ========================= */
   const getBrand = (text = "") => {
     const t = text.toLowerCase();
 
@@ -68,20 +68,50 @@ export default function Home() {
     if (t.includes("tully")) return "タリーズ";
     if (t.includes("doutor")) return "ドトール";
 
-    if (t.includes("meiji")) return "明治";
-    if (t.includes("morinaga")) return "森永";
-    if (t.includes("glico")) return "グリコ";
-    if (t.includes("lotte")) return "ロッテ";
-
     return "";
   };
 
+  /* =========================
+     ■ コンビニ色分け
+  ========================= */
+  const getBrandColor = (brand) => {
+    if (brand === "セブン") return "#ff9f43"; // orange
+    if (brand === "ローソン") return "#2d7ff9"; // blue
+    if (brand === "ファミマ") return "#2ecc71"; // green
+    return "#333";
+  };
+
+  /* =========================
+     ■ 絵文字
+  ========================= */
   const getEmoji = (text = "") => {
     if (/アイス|ice/.test(text)) return "🍨";
     if (/スイーツ|ケーキ/.test(text)) return "🍰";
     if (/ドリンク|飲料/.test(text)) return "🥤";
     if (/チョコ/.test(text)) return "🍫";
     return "🍃";
+  };
+
+  /* =========================
+     ■ 画像安定取得
+  ========================= */
+  const getImage = (item) => {
+    const html = item.raw || "";
+
+    const img =
+      html.match(/<meta property="og:image" content="(.*?)"/)?.[1] ||
+      html.match(/<meta name="twitter:image" content="(.*?)"/)?.[1] ||
+      html.match(/<meta itemprop="image" content="(.*?)"/)?.[1] ||
+      html.match(/<img[^>]+src="(.*?)"/)?.[1];
+
+    if (!img) return null;
+    if (img.startsWith("http")) return img;
+
+    try {
+      return new URL(img, item.link).href;
+    } catch {
+      return null;
+    }
   };
 
   const toggleGroup = (g) => {
@@ -122,15 +152,13 @@ export default function Home() {
     <div style={styles.page}>
       <h1 style={styles.title}>🍫 mint intel</h1>
 
+      {/* タブ */}
       <div style={styles.tabRow}>
-        <button onClick={() => setTab("all")} style={tabBtn(tab === "all")}>
-          新着
-        </button>
-        <button onClick={() => setTab("fav")} style={tabBtn(tab === "fav")}>
-          お気に入り
-        </button>
+        <button onClick={() => setTab("all")} style={tabBtn(tab === "all")}>新着</button>
+        <button onClick={() => setTab("fav")} style={tabBtn(tab === "fav")}>お気に入り</button>
       </div>
 
+      {/* 検索 */}
       <div style={styles.searchRow}>
         <input
           value={keyword}
@@ -151,6 +179,7 @@ export default function Home() {
         </select>
       </div>
 
+      {/* フィルタ */}
       <div style={styles.filterRow}>
         {Object.keys(GROUPS).map((g) => (
           <button
@@ -163,39 +192,52 @@ export default function Home() {
         ))}
       </div>
 
+      {/* ローディング */}
       {loading && (
         <div>
           {[1, 2, 3].map((i) => (
-            <div key={i} style={skeleton} />
+            <div key={i} style={styles.skeleton} />
           ))}
         </div>
       )}
 
+      {/* カード */}
       <div style={styles.grid}>
         {!loading &&
           filtered.map((item, i) => {
             const brand = getBrand(item.title + item.link);
+            const img = getImage(item);
 
             return (
               <div key={i} style={styles.card}>
-                {/* ■ ブランド（上固定） */}
+
+                {/* ブランド（色付き） */}
                 {brand && (
-                  <div style={styles.badgeBrand}>{brand}</div>
+                  <div
+                    style={{
+                      ...styles.badge,
+                      background: getBrandColor(brand),
+                    }}
+                  >
+                    {brand}
+                  </div>
                 )}
 
-                {/* ■ アイコン行 */}
-                <div style={styles.iconRow}>
-                  <span style={styles.emoji}>
+                {/* 画像 */}
+                {img ? (
+                  <img src={img} style={styles.img} />
+                ) : (
+                  <div style={styles.emojiBox}>
                     {getEmoji(item.title)}
-                  </span>
-                </div>
+                  </div>
+                )}
 
-                {/* ■ タイトル */}
+                {/* タイトル */}
                 <div style={styles.titleText}>{item.title}</div>
 
-                {/* ■ ★ 完全分離メタ行（競合解消ポイント） */}
+                {/* 日付＋お気に入り */}
                 <div style={styles.metaRow}>
-                  <span style={styles.date}>
+                  <span>
                     {new Date(item.date).toLocaleDateString()}
                   </span>
 
@@ -214,42 +256,6 @@ export default function Home() {
     </div>
   );
 }
-
-/* =========================
-   ■ 安全関数
-========================= */
-
-const tabBtn = (active) => ({
-  flex: 1,
-  padding: 6,
-  borderRadius: 10,
-  border: "none",
-  fontSize: 12,
-  color: "#fff",
-  background: active ? "#00c6ff" : "#2a2f36",
-});
-
-const filterBtn = (active) => ({
-  flex: 1,
-  padding: 6,
-  borderRadius: 10,
-  border: "none",
-  fontSize: 12,
-  color: "#fff",
-  background: active ? "#00c6ff" : "#2a2f36",
-});
-
-const favBtn = {
-  border: "none",
-  background: "transparent",
-};
-
-const skeleton = {
-  height: 120,
-  marginBottom: 10,
-  borderRadius: 12,
-  background: "#ffffff22",
-};
 
 /* =========================
    ■ styles
@@ -317,23 +323,23 @@ const styles = {
     boxShadow: "0 6px 18px rgba(0,0,0,0.25)",
   },
 
-  badgeBrand: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    background: "#333",
-    color: "#fff",
-    fontSize: 10,
-    padding: "2px 6px",
-    borderRadius: 6,
+  img: {
+    width: "100%",
+    height: 160,
+    objectFit: "cover",
+    borderRadius: 10,
+    marginBottom: 8,
   },
 
-  iconRow: {
-    marginBottom: 6,
-  },
-
-  emoji: {
-    fontSize: 20,
+  emojiBox: {
+    height: 160,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 40,
+    background: "#eef6f6",
+    borderRadius: 10,
+    marginBottom: 8,
   },
 
   titleText: {
@@ -345,14 +351,18 @@ const styles = {
   metaRow: {
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "center",
     fontSize: 11,
     color: "#666",
-    marginBottom: 6,
   },
 
-  date: {
-    fontSize: 11,
+  badge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    color: "#fff",
+    fontSize: 10,
+    padding: "2px 6px",
+    borderRadius: 6,
   },
 
   link: {
@@ -360,4 +370,36 @@ const styles = {
     color: "#007aff",
     textDecoration: "none",
   },
+
+  skeleton: {
+    height: 120,
+    marginBottom: 10,
+    borderRadius: 12,
+    background: "#ffffff22",
+  },
+};
+
+const tabBtn = (active) => ({
+  flex: 1,
+  padding: 6,
+  borderRadius: 10,
+  border: "none",
+  fontSize: 12,
+  color: "#fff",
+  background: active ? "#00c6ff" : "#2a2f36",
+});
+
+const filterBtn = (active) => ({
+  flex: 1,
+  padding: 6,
+  borderRadius: 10,
+  border: "none",
+  fontSize: 12,
+  color: "#fff",
+  background: active ? "#00c6ff" : "#2a2f36",
+});
+
+const favBtn = {
+  border: "none",
+  background: "transparent",
 };
