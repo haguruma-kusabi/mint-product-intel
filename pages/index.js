@@ -7,35 +7,46 @@ const GROUPS = {
 };
 
 /* =========================
-   ■ ブランド判定（強化＋安定版）
+   ■ HTMLクレンジング
 ========================= */
-const getBrand = (text = "") => {
-  const t = (text || "")
+const stripHtml = (html = "") =>
+  html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ");
+
+/* =========================
+   ■ ブランド判定（本文強化版）
+========================= */
+const getBrand = (item) => {
+  const text = (
+    (item.title || "") +
+    (item.link || "") +
+    (item.desc || "") +
+    (item.raw || "") +
+    stripHtml(item.raw || "")
+  )
     .toLowerCase()
-    .replace(/\s/g, "")
-    .replace(/’/g, "'");
+    .replace(/\s/g, "");
 
-  // コンビニ
-  if (/(lawson|ローソン)/.test(t)) return "ローソン";
-  if (/(7-?eleven|セブン|seven)/.test(t)) return "セブン";
-  if (/(familymart|ファミマ|famima)/.test(t)) return "ファミマ";
+  if (/(lawson|ローソン)/.test(text)) return "ローソン";
+  if (/(7-?eleven|セブン|seven)/.test(text)) return "セブン";
+  if (/(familymart|ファミマ|famima)/.test(text)) return "ファミマ";
 
-  // カフェ（ここが重要）
-  if (/(starbucks|スタバ|sbux)/.test(t)) return "スタバ";
-  if (/(tully'?s|tullys|タリーズ|tully)/.test(t)) return "タリーズ";
-  if (/(doutor|ドトール)/.test(t)) return "ドトール";
+  if (/(starbucks|スタバ)/.test(text)) return "スタバ";
 
-  // メーカー
-  if (/(meiji|明治)/.test(t)) return "明治";
-  if (/(morinaga|森永)/.test(t)) return "森永";
-  if (/(glico|グリコ)/.test(t)) return "グリコ";
-  if (/(lotte|ロッテ)/.test(t)) return "ロッテ";
+  // ★カフェ強化
+  if (/(tully'?s|tullys|タリーズ|tully)/.test(text)) return "タリーズ";
+
+  if (/(doutor|ドトール)/.test(text)) return "ドトール";
+
+  if (/(meiji|明治)/.test(text)) return "明治";
+  if (/(morinaga|森永)/.test(text)) return "森永";
+  if (/(glico|グリコ)/.test(text)) return "グリコ";
+  if (/(lotte|ロッテ)/.test(text)) return "ロッテ";
 
   return "";
 };
 
 /* =========================
-   ■ ブランド色
+   ■ ブランドカラー
 ========================= */
 const getBrandColor = (brand) => {
   if (brand === "セブン") return "#ff9f43";
@@ -45,7 +56,18 @@ const getBrandColor = (brand) => {
 };
 
 /* =========================
-   ■ 画像
+   ■ 絵文字
+========================= */
+const getEmoji = (text = "") => {
+  if (/アイス|ice/.test(text)) return "🍨";
+  if (/スイーツ|ケーキ/.test(text)) return "🍰";
+  if (/ドリンク|飲料/.test(text)) return "🥤";
+  if (/チョコ/.test(text)) return "🍫";
+  return "🍃";
+};
+
+/* =========================
+   ■ 画像完全安定化
 ========================= */
 const getImage = (item) => {
   const html = item.raw || "";
@@ -58,24 +80,11 @@ const getImage = (item) => {
 
   if (!img) return null;
 
-  if (img.startsWith("http")) return img;
-
   try {
     return new URL(img, item.link).href;
   } catch {
     return null;
   }
-};
-
-/* =========================
-   ■ 絵文字
-========================= */
-const getEmoji = (text = "") => {
-  if (/アイス|ice/.test(text)) return "🍨";
-  if (/スイーツ|ケーキ/.test(text)) return "🍰";
-  if (/ドリンク|飲料/.test(text)) return "🥤";
-  if (/チョコ/.test(text)) return "🍫";
-  return "🍃";
 };
 
 export default function Home() {
@@ -132,12 +141,17 @@ export default function Home() {
   const baseList = tab === "fav" ? favorites : items;
 
   const filtered = baseList.filter((item) => {
-    const text = (item.title + item.link).toLowerCase();
+    const text = (
+      item.title +
+      item.link +
+      item.desc +
+      item.raw
+    ).toLowerCase();
 
     if (keyword && !text.includes(keyword.toLowerCase()))
       return false;
 
-    const brand = getBrand(item.title + item.link);
+    const brand = getBrand(item);
 
     if (activeGroups.length > 0) {
       const ok = activeGroups.some((g) =>
@@ -146,75 +160,29 @@ export default function Home() {
       if (!ok) return false;
     }
 
-    const diff =
-      (new Date() - new Date(item.date)) /
-      (1000 * 60 * 60 * 24);
-
-    if (diff > range) return false;
+    const date = item.date ? new Date(item.date) : null;
+    if (date) {
+      const diff =
+        (new Date() - date) / (1000 * 60 * 60 * 24);
+      if (diff > range) return false;
+    }
 
     return true;
   });
 
   return (
     <div style={styles.page}>
-      <h1 style={styles.title}>🍫 mint intel</h1>
+      <h1 style={styles.title}>🍫 mint intel next</h1>
 
-      {/* ■ タブ（復活） */}
-      <div style={styles.tabRow}>
-        <button onClick={() => setTab("all")} style={tabBtn(tab === "all")}>
-          新着
-        </button>
-        <button onClick={() => setTab("fav")} style={tabBtn(tab === "fav")}>
-          お気に入り
-        </button>
-      </div>
-
-      {/* ■ 検索（復活） */}
-      <div style={styles.searchRow}>
-        <input
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          placeholder="検索"
-          style={styles.search}
-        />
-
-        <select
-          value={range}
-          onChange={(e) => setRange(Number(e.target.value))}
-          style={styles.select}
-        >
-          <option value={3}>3日</option>
-          <option value={7}>7日</option>
-          <option value={14}>14日</option>
-          <option value={30}>30日</option>
-        </select>
-      </div>
-
-      {/* ■ フィルタ（復活） */}
-      <div style={styles.filterRow}>
-        {Object.keys(GROUPS).map((g) => (
-          <button
-            key={g}
-            onClick={() => toggleGroup(g)}
-            style={filterBtn(activeGroups.includes(g))}
-          >
-            {g}
-          </button>
-        ))}
-      </div>
-
-      {/* ■ ローディング */}
-      {loading && <div style={styles.skeleton} />}
-
-      {/* ■ カード */}
       <div style={styles.grid}>
         {!loading &&
           filtered.map((item, i) => {
-            const brand = getBrand(item.title + item.link);
+            const brand = getBrand(item);
             const img = getImage(item);
 
             return (
               <div key={i} style={styles.card}>
+                {/* ブランド */}
                 {brand && (
                   <div
                     style={{
@@ -226,19 +194,30 @@ export default function Home() {
                   </div>
                 )}
 
+                {/* 画像（完全フォールバック保証） */}
                 {img ? (
-                  <img src={img} style={styles.img} />
+                  <img
+                    src={img}
+                    style={styles.img}
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
                 ) : (
                   <div style={styles.emojiBox}>
                     {getEmoji(item.title)}
                   </div>
                 )}
 
+                {/* タイトル */}
                 <div style={styles.titleText}>{item.title}</div>
 
+                {/* メタ */}
                 <div style={styles.metaRow}>
                   <span>
-                    {new Date(item.date).toLocaleDateString()}
+                    {item.date
+                      ? new Date(item.date).toLocaleDateString()
+                      : ""}
                   </span>
 
                   <button onClick={() => toggleFav(item)}>
@@ -254,7 +233,7 @@ export default function Home() {
 }
 
 /* =========================
-   ■ styles（省略なし復活）
+   ■ styles
 ========================= */
 
 const styles = {
@@ -268,19 +247,16 @@ const styles = {
     color: "#fff",
   },
 
-  title: { textAlign: "center", fontSize: 18, marginBottom: 10 },
+  title: {
+    textAlign: "center",
+    fontSize: 18,
+    marginBottom: 10,
+  },
 
-  tabRow: { display: "flex", gap: 6, marginBottom: 10 },
-
-  searchRow: { display: "flex", gap: 6, marginBottom: 10 },
-
-  search: { flex: 2, padding: 6, borderRadius: 10, border: "none" },
-
-  select: { flex: 1, borderRadius: 10, border: "none" },
-
-  filterRow: { display: "flex", gap: 6, marginBottom: 12 },
-
-  grid: { display: "grid", gap: 14 },
+  grid: {
+    display: "grid",
+    gap: 14,
+  },
 
   card: {
     background: "#fff",
@@ -332,30 +308,4 @@ const styles = {
     fontSize: 11,
     color: "#666",
   },
-
-  skeleton: {
-    height: 120,
-    borderRadius: 12,
-    background: "#ffffff22",
-  },
 };
-
-const tabBtn = (active) => ({
-  flex: 1,
-  padding: 6,
-  borderRadius: 10,
-  border: "none",
-  fontSize: 12,
-  color: "#fff",
-  background: active ? "#00c6ff" : "#2a2f36",
-});
-
-const filterBtn = (active) => ({
-  flex: 1,
-  padding: 6,
-  borderRadius: 10,
-  border: "none",
-  fontSize: 12,
-  color: "#fff",
-  background: active ? "#00c6ff" : "#2a2f36",
-});
