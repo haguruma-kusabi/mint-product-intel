@@ -6,6 +6,82 @@ const GROUPS = {
   メーカー: ["明治", "森永", "グリコ", "ロッテ"],
 };
 
+/* =========================
+   ■ ブランド判定（次世代版）
+========================= */
+const getBrand = (item) => {
+  const text = (
+    (item.title || "") +
+    (item.link || "") +
+    (item.desc || "") +
+    (item.raw || "")
+  )
+    .toLowerCase()
+    .replace(/\s/g, "");
+
+  if (/(lawson|ローソン)/.test(text)) return "ローソン";
+  if (/(7-?eleven|セブン|seven)/.test(text)) return "セブン";
+  if (/(familymart|ファミマ|famima)/.test(text)) return "ファミマ";
+
+  if (/(starbucks|スタバ)/.test(text)) return "スタバ";
+
+  // ★ここ強化（取りこぼし対策）
+  if (/(tully'?s|tullys|tully)/.test(text)) return "タリーズ";
+
+  if (/(doutor|ドトール)/.test(text)) return "ドトール";
+
+  if (/(meiji|明治)/.test(text)) return "明治";
+  if (/(morinaga|森永)/.test(text)) return "森永";
+  if (/(glico|グリコ)/.test(text)) return "グリコ";
+  if (/(lotte|ロッテ)/.test(text)) return "ロッテ";
+
+  return "";
+};
+
+/* =========================
+   ■ ブランド色（コンビニのみ）
+========================= */
+const getBrandColor = (brand) => {
+  if (brand === "セブン") return "#ff9f43";
+  if (brand === "ローソン") return "#2d7ff9";
+  if (brand === "ファミマ") return "#2ecc71";
+  return "#333";
+};
+
+/* =========================
+   ■ 絵文字フォールバック
+========================= */
+const getEmoji = (text = "") => {
+  if (/アイス|ice/.test(text)) return "🍨";
+  if (/スイーツ|ケーキ/.test(text)) return "🍰";
+  if (/ドリンク|飲料/.test(text)) return "🥤";
+  if (/チョコ/.test(text)) return "🍫";
+  return "🍃";
+};
+
+/* =========================
+   ■ 画像安定化（強化版）
+========================= */
+const getImage = (item) => {
+  const html = item.raw || "";
+
+  const img =
+    html.match(/<meta property="og:image" content="(.*?)"/)?.[1] ||
+    html.match(/<meta name="twitter:image" content="(.*?)"/)?.[1] ||
+    html.match(/<meta itemprop="image" content="(.*?)"/)?.[1] ||
+    html.match(/<img[^>]+src="(.*?)"/)?.[1];
+
+  if (!img) return null;
+
+  if (img.startsWith("http")) return img;
+
+  try {
+    return new URL(img, item.link).href;
+  } catch {
+    return null;
+  }
+};
+
 export default function Home() {
   const [items, setItems] = useState([]);
   const [favorites, setFavorites] = useState([]);
@@ -17,17 +93,14 @@ export default function Home() {
 
   useEffect(() => {
     const run = async () => {
-      try {
-        const data = await fetch("/api/news").then((r) => r.json());
+      const data = await fetch("/api/news").then((r) => r.json());
 
-        const sorted = [...data].sort(
-          (a, b) => new Date(b.date) - new Date(a.date)
-        );
+      const sorted = [...data].sort(
+        (a, b) => new Date(b.date) - new Date(a.date)
+      );
 
-        setItems(sorted);
-      } finally {
-        setLoading(false);
-      }
+      setItems(sorted);
+      setLoading(false);
     };
 
     run();
@@ -39,13 +112,11 @@ export default function Home() {
   }, []);
 
   const toggleFav = (item) => {
-    let updated;
+    const exists = favorites.some((f) => f.link === item.link);
 
-    if (favorites.some((f) => f.link === item.link)) {
-      updated = favorites.filter((f) => f.link !== item.link);
-    } else {
-      updated = [...favorites, item];
-    }
+    const updated = exists
+      ? favorites.filter((f) => f.link !== item.link)
+      : [...favorites, item];
 
     setFavorites(updated);
     localStorage.setItem("mint-fav", JSON.stringify(updated));
@@ -53,66 +124,6 @@ export default function Home() {
 
   const isFav = (item) =>
     favorites.some((f) => f.link === item.link);
-
-  /* =========================
-     ■ ブランド判定
-  ========================= */
-  const getBrand = (text = "") => {
-    const t = text.toLowerCase();
-
-    if (t.includes("lawson") || t.includes("ローソン")) return "ローソン";
-    if (t.includes("7") || t.includes("セブン")) return "セブン";
-    if (t.includes("familymart") || t.includes("ファミマ")) return "ファミマ";
-
-    if (t.includes("starbucks") || t.includes("スタバ")) return "スタバ";
-    if (t.includes("tully")) return "タリーズ";
-    if (t.includes("doutor")) return "ドトール";
-
-    return "";
-  };
-
-  /* =========================
-     ■ コンビニ色分け
-  ========================= */
-  const getBrandColor = (brand) => {
-    if (brand === "セブン") return "#ff9f43"; // orange
-    if (brand === "ローソン") return "#2d7ff9"; // blue
-    if (brand === "ファミマ") return "#2ecc71"; // green
-    return "#333";
-  };
-
-  /* =========================
-     ■ 絵文字
-  ========================= */
-  const getEmoji = (text = "") => {
-    if (/アイス|ice/.test(text)) return "🍨";
-    if (/スイーツ|ケーキ/.test(text)) return "🍰";
-    if (/ドリンク|飲料/.test(text)) return "🥤";
-    if (/チョコ/.test(text)) return "🍫";
-    return "🍃";
-  };
-
-  /* =========================
-     ■ 画像安定取得
-  ========================= */
-  const getImage = (item) => {
-    const html = item.raw || "";
-
-    const img =
-      html.match(/<meta property="og:image" content="(.*?)"/)?.[1] ||
-      html.match(/<meta name="twitter:image" content="(.*?)"/)?.[1] ||
-      html.match(/<meta itemprop="image" content="(.*?)"/)?.[1] ||
-      html.match(/<img[^>]+src="(.*?)"/)?.[1];
-
-    if (!img) return null;
-    if (img.startsWith("http")) return img;
-
-    try {
-      return new URL(img, item.link).href;
-    } catch {
-      return null;
-    }
-  };
 
   const toggleGroup = (g) => {
     setActiveGroups((prev) =>
@@ -125,12 +136,16 @@ export default function Home() {
   const baseList = tab === "fav" ? favorites : items;
 
   const filtered = baseList.filter((item) => {
-    const text = item.title.toLowerCase();
+    const text = (
+      item.title +
+      item.link +
+      item.desc
+    ).toLowerCase();
 
     if (keyword && !text.includes(keyword.toLowerCase()))
       return false;
 
-    const brand = getBrand(item.title + item.link);
+    const brand = getBrand(item);
 
     if (activeGroups.length > 0) {
       const ok = activeGroups.some((g) =>
@@ -139,79 +154,29 @@ export default function Home() {
       if (!ok) return false;
     }
 
-    const diff =
-      (new Date() - new Date(item.date)) /
-      (1000 * 60 * 60 * 24);
-
-    if (diff > range) return false;
+    const date = item.date ? new Date(item.date) : null;
+    if (date) {
+      const diff =
+        (new Date() - date) / (1000 * 60 * 60 * 24);
+      if (diff > range) return false;
+    }
 
     return true;
   });
 
   return (
     <div style={styles.page}>
-      <h1 style={styles.title}>🍫 mint intel</h1>
+      <h1 style={styles.title}>🍫 mint intel next</h1>
 
-      {/* タブ */}
-      <div style={styles.tabRow}>
-        <button onClick={() => setTab("all")} style={tabBtn(tab === "all")}>新着</button>
-        <button onClick={() => setTab("fav")} style={tabBtn(tab === "fav")}>お気に入り</button>
-      </div>
-
-      {/* 検索 */}
-      <div style={styles.searchRow}>
-        <input
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          placeholder="検索"
-          style={styles.search}
-        />
-
-        <select
-          value={range}
-          onChange={(e) => setRange(Number(e.target.value))}
-          style={styles.select}
-        >
-          <option value={3}>3日</option>
-          <option value={7}>7日</option>
-          <option value={14}>14日</option>
-          <option value={30}>30日</option>
-        </select>
-      </div>
-
-      {/* フィルタ */}
-      <div style={styles.filterRow}>
-        {Object.keys(GROUPS).map((g) => (
-          <button
-            key={g}
-            onClick={() => toggleGroup(g)}
-            style={filterBtn(activeGroups.includes(g))}
-          >
-            {g}
-          </button>
-        ))}
-      </div>
-
-      {/* ローディング */}
-      {loading && (
-        <div>
-          {[1, 2, 3].map((i) => (
-            <div key={i} style={styles.skeleton} />
-          ))}
-        </div>
-      )}
-
-      {/* カード */}
       <div style={styles.grid}>
         {!loading &&
           filtered.map((item, i) => {
-            const brand = getBrand(item.title + item.link);
+            const brand = getBrand(item);
             const img = getImage(item);
 
             return (
               <div key={i} style={styles.card}>
-
-                {/* ブランド（色付き） */}
+                {/* ブランドバッジ */}
                 {brand && (
                   <div
                     style={{
@@ -223,9 +188,15 @@ export default function Home() {
                   </div>
                 )}
 
-                {/* 画像 */}
+                {/* 画像（完全フォールバック付き） */}
                 {img ? (
-                  <img src={img} style={styles.img} />
+                  <img
+                    src={img}
+                    style={styles.img}
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
                 ) : (
                   <div style={styles.emojiBox}>
                     {getEmoji(item.title)}
@@ -235,20 +206,18 @@ export default function Home() {
                 {/* タイトル */}
                 <div style={styles.titleText}>{item.title}</div>
 
-                {/* 日付＋お気に入り */}
+                {/* メタ */}
                 <div style={styles.metaRow}>
                   <span>
-                    {new Date(item.date).toLocaleDateString()}
+                    {item.date
+                      ? new Date(item.date).toLocaleDateString()
+                      : ""}
                   </span>
 
-                  <button onClick={() => toggleFav(item)} style={favBtn}>
+                  <button onClick={() => toggleFav(item)}>
                     {isFav(item) ? "❤️" : "🤍"}
                   </button>
                 </div>
-
-                <a href={item.link} target="_blank" style={styles.link}>
-                  記事 →
-                </a>
               </div>
             );
           })}
@@ -278,37 +247,6 @@ const styles = {
     marginBottom: 10,
   },
 
-  tabRow: {
-    display: "flex",
-    gap: 6,
-    marginBottom: 10,
-  },
-
-  searchRow: {
-    display: "flex",
-    gap: 6,
-    marginBottom: 10,
-  },
-
-  search: {
-    flex: 2,
-    padding: 6,
-    borderRadius: 10,
-    border: "none",
-  },
-
-  select: {
-    flex: 1,
-    borderRadius: 10,
-    border: "none",
-  },
-
-  filterRow: {
-    display: "flex",
-    gap: 6,
-    marginBottom: 12,
-  },
-
   grid: {
     display: "grid",
     gap: 14,
@@ -321,6 +259,16 @@ const styles = {
     padding: 12,
     position: "relative",
     boxShadow: "0 6px 18px rgba(0,0,0,0.25)",
+  },
+
+  badge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    color: "#fff",
+    fontSize: 10,
+    padding: "2px 6px",
+    borderRadius: 6,
   },
 
   img: {
@@ -354,52 +302,4 @@ const styles = {
     fontSize: 11,
     color: "#666",
   },
-
-  badge: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    color: "#fff",
-    fontSize: 10,
-    padding: "2px 6px",
-    borderRadius: 6,
-  },
-
-  link: {
-    fontSize: 12,
-    color: "#007aff",
-    textDecoration: "none",
-  },
-
-  skeleton: {
-    height: 120,
-    marginBottom: 10,
-    borderRadius: 12,
-    background: "#ffffff22",
-  },
-};
-
-const tabBtn = (active) => ({
-  flex: 1,
-  padding: 6,
-  borderRadius: 10,
-  border: "none",
-  fontSize: 12,
-  color: "#fff",
-  background: active ? "#00c6ff" : "#2a2f36",
-});
-
-const filterBtn = (active) => ({
-  flex: 1,
-  padding: 6,
-  borderRadius: 10,
-  border: "none",
-  fontSize: 12,
-  color: "#fff",
-  background: active ? "#00c6ff" : "#2a2f36",
-});
-
-const favBtn = {
-  border: "none",
-  background: "transparent",
 };
