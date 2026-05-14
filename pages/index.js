@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 
+/* =========================
+   ■ グループ
+========================= */
 const GROUPS = {
   コンビニ: ["ローソン", "セブン", "ファミマ"],
   カフェ: ["スタバ", "タリーズ", "ドトール"],
@@ -7,7 +10,49 @@ const GROUPS = {
 };
 
 /* =========================
-   ■ ブランド判定（最強版）
+   ■ タイトル正規化（重複対策）
+========================= */
+const normalizeTitle = (title = "") => {
+  return title
+    .toLowerCase()
+    .replace(/【.*?】/g, "")
+    .replace(/\(.*?\)/g, "")
+    .replace(/[^\wぁ-んァ-ン一-龥]/g, "")
+    .slice(0, 40);
+};
+
+/* =========================
+   ■ 重複統合
+========================= */
+const dedupeItems = (items) => {
+  const map = new Map();
+
+  items.forEach((item) => {
+    const key = normalizeTitle(item.title);
+
+    let foundKey = null;
+
+    for (let k of map.keys()) {
+      if (k.includes(key) || key.includes(k)) {
+        foundKey = k;
+        break;
+      }
+    }
+
+    if (foundKey) {
+      map.get(foundKey).push(item);
+    } else {
+      map.set(key, [item]);
+    }
+  });
+
+  return Array.from(map.values()).map((group) =>
+    group.sort((a, b) => new Date(b.date) - new Date(a.date))[0]
+  );
+};
+
+/* =========================
+   ■ ブランド判定
 ========================= */
 const getBrand = (item) => {
   const text = (
@@ -22,10 +67,10 @@ const getBrand = (item) => {
 
   if (/(lawson|ローソン)/.test(text)) return "ローソン";
   if (/(7-?eleven|セブン|seven)/.test(text)) return "セブン";
-  if (/(familymart|ファミマ|famima)/.test(text)) return "ファミマ";
+  if (/(familymart|ファミマ)/.test(text)) return "ファミマ";
 
   if (/(starbucks|スタバ)/.test(text)) return "スタバ";
-  if (/(tully'?s|tullys|タリーズ|tully)/.test(text)) return "タリーズ";
+  if (/(tully'?s|タリーズ|tully)/.test(text)) return "タリーズ";
   if (/(doutor|ドトール)/.test(text)) return "ドトール";
 
   if (/(meiji|明治)/.test(text)) return "明治";
@@ -43,14 +88,9 @@ const getBrandColor = (brand) => {
   return "#333";
 };
 
-const getEmoji = (text = "") => {
-  if (/アイス/.test(text)) return "🍨";
-  if (/スイーツ|ケーキ/.test(text)) return "🍰";
-  if (/ドリンク/.test(text)) return "🥤";
-  if (/チョコ/.test(text)) return "🍫";
-  return "🍃";
-};
-
+/* =========================
+   ■ 画像
+========================= */
 const getImage = (item) => {
   const html = item.raw || "";
 
@@ -68,6 +108,17 @@ const getImage = (item) => {
   }
 };
 
+/* =========================
+   ■ 絵文字
+========================= */
+const getEmoji = (text = "") => {
+  if (/アイス/.test(text)) return "🍨";
+  if (/スイーツ|ケーキ/.test(text)) return "🍰";
+  if (/ドリンク/.test(text)) return "🥤";
+  if (/チョコ/.test(text)) return "🍫";
+  return "🍃";
+};
+
 export default function Home() {
   const [items, setItems] = useState([]);
   const [favorites, setFavorites] = useState([]);
@@ -81,8 +132,10 @@ export default function Home() {
     const run = async () => {
       const data = await fetch("/api/news").then((r) => r.json());
 
-      const sorted = [...data].sort(
-        (a, b) => new Date(b.date) - new Date(a.date)
+      const sorted = dedupeItems(
+        [...data].sort(
+          (a, b) => new Date(b.date) - new Date(a.date)
+        )
       );
 
       setItems(sorted);
@@ -245,7 +298,9 @@ export default function Home() {
   );
 }
 
-/* ■ styles */
+/* =========================
+   ■ styles
+========================= */
 
 const styles = {
   page: {
