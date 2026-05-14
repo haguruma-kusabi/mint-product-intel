@@ -7,34 +7,25 @@ const GROUPS = {
 };
 
 /* =========================
-   ■ HTMLクレンジング
-========================= */
-const stripHtml = (html = "") =>
-  html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ");
-
-/* =========================
-   ■ ブランド判定（本文強化版）
+   ■ ブランド判定（最強版）
 ========================= */
 const getBrand = (item) => {
   const text = (
     (item.title || "") +
     (item.link || "") +
     (item.desc || "") +
-    (item.raw || "") +
-    stripHtml(item.raw || "")
+    (item.raw || "")
   )
     .toLowerCase()
-    .replace(/\s/g, "");
+    .replace(/\s/g, "")
+    .replace(/’/g, "'");
 
   if (/(lawson|ローソン)/.test(text)) return "ローソン";
   if (/(7-?eleven|セブン|seven)/.test(text)) return "セブン";
   if (/(familymart|ファミマ|famima)/.test(text)) return "ファミマ";
 
   if (/(starbucks|スタバ)/.test(text)) return "スタバ";
-
-  // ★カフェ強化
   if (/(tully'?s|tullys|タリーズ|tully)/.test(text)) return "タリーズ";
-
   if (/(doutor|ドトール)/.test(text)) return "ドトール";
 
   if (/(meiji|明治)/.test(text)) return "明治";
@@ -45,9 +36,6 @@ const getBrand = (item) => {
   return "";
 };
 
-/* =========================
-   ■ ブランドカラー
-========================= */
 const getBrandColor = (brand) => {
   if (brand === "セブン") return "#ff9f43";
   if (brand === "ローソン") return "#2d7ff9";
@@ -55,27 +43,20 @@ const getBrandColor = (brand) => {
   return "#333";
 };
 
-/* =========================
-   ■ 絵文字
-========================= */
 const getEmoji = (text = "") => {
-  if (/アイス|ice/.test(text)) return "🍨";
+  if (/アイス/.test(text)) return "🍨";
   if (/スイーツ|ケーキ/.test(text)) return "🍰";
-  if (/ドリンク|飲料/.test(text)) return "🥤";
+  if (/ドリンク/.test(text)) return "🥤";
   if (/チョコ/.test(text)) return "🍫";
   return "🍃";
 };
 
-/* =========================
-   ■ 画像完全安定化
-========================= */
 const getImage = (item) => {
   const html = item.raw || "";
 
   const img =
     html.match(/<meta property="og:image" content="(.*?)"/)?.[1] ||
     html.match(/<meta name="twitter:image" content="(.*?)"/)?.[1] ||
-    html.match(/<meta itemprop="image" content="(.*?)"/)?.[1] ||
     html.match(/<img[^>]+src="(.*?)"/)?.[1];
 
   if (!img) return null;
@@ -110,10 +91,8 @@ export default function Home() {
 
     run();
 
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("mint-fav");
-      if (saved) setFavorites(JSON.parse(saved));
-    }
+    const saved = localStorage.getItem("mint-fav");
+    if (saved) setFavorites(JSON.parse(saved));
   }, []);
 
   const toggleFav = (item) => {
@@ -127,9 +106,6 @@ export default function Home() {
     localStorage.setItem("mint-fav", JSON.stringify(updated));
   };
 
-  const isFav = (item) =>
-    favorites.some((f) => f.link === item.link);
-
   const toggleGroup = (g) => {
     setActiveGroups((prev) =>
       prev.includes(g)
@@ -141,12 +117,7 @@ export default function Home() {
   const baseList = tab === "fav" ? favorites : items;
 
   const filtered = baseList.filter((item) => {
-    const text = (
-      item.title +
-      item.link +
-      item.desc +
-      item.raw
-    ).toLowerCase();
+    const text = (item.title + item.link).toLowerCase();
 
     if (keyword && !text.includes(keyword.toLowerCase()))
       return false;
@@ -160,20 +131,64 @@ export default function Home() {
       if (!ok) return false;
     }
 
-    const date = item.date ? new Date(item.date) : null;
-    if (date) {
-      const diff =
-        (new Date() - date) / (1000 * 60 * 60 * 24);
-      if (diff > range) return false;
-    }
+    const diff =
+      (new Date() - new Date(item.date)) /
+      (1000 * 60 * 60 * 24);
+
+    if (diff > range) return false;
 
     return true;
   });
 
   return (
     <div style={styles.page}>
-      <h1 style={styles.title}>🍫 mint intel next</h1>
+      <h1 style={styles.title}>🍫 mint intel</h1>
 
+      {/* タブ */}
+      <div style={styles.tabRow}>
+        <button onClick={() => setTab("all")} style={tabBtn(tab === "all")}>
+          新着
+        </button>
+        <button onClick={() => setTab("fav")} style={tabBtn(tab === "fav")}>
+          お気に入り
+        </button>
+      </div>
+
+      {/* 検索 */}
+      <div style={styles.searchRow}>
+        <input
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          placeholder="検索"
+          style={styles.search}
+        />
+
+        <select
+          value={range}
+          onChange={(e) => setRange(Number(e.target.value))}
+          style={styles.select}
+        >
+          <option value={3}>3日</option>
+          <option value={7}>7日</option>
+          <option value={14}>14日</option>
+          <option value={30}>30日</option>
+        </select>
+      </div>
+
+      {/* フィルタ */}
+      <div style={styles.filterRow}>
+        {Object.keys(GROUPS).map((g) => (
+          <button
+            key={g}
+            onClick={() => toggleGroup(g)}
+            style={filterBtn(activeGroups.includes(g))}
+          >
+            {g}
+          </button>
+        ))}
+      </div>
+
+      {/* カード */}
       <div style={styles.grid}>
         {!loading &&
           filtered.map((item, i) => {
@@ -181,50 +196,48 @@ export default function Home() {
             const img = getImage(item);
 
             return (
-              <div key={i} style={styles.card}>
-                {/* ブランド */}
-                {brand && (
-                  <div
-                    style={{
-                      ...styles.badge,
-                      background: getBrandColor(brand),
-                    }}
-                  >
-                    {brand}
+              <a
+                key={i}
+                href={item.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ textDecoration: "none" }}
+              >
+                <div style={styles.card}>
+                  {brand && (
+                    <div
+                      style={{
+                        ...styles.badge,
+                        background: getBrandColor(brand),
+                      }}
+                    >
+                      {brand}
+                    </div>
+                  )}
+
+                  {img ? (
+                    <img
+                      src={img}
+                      style={styles.img}
+                      onError={(e) =>
+                        (e.currentTarget.style.display = "none")
+                      }
+                    />
+                  ) : (
+                    <div style={styles.emojiBox}>
+                      {getEmoji(item.title)}
+                    </div>
+                  )}
+
+                  <div style={styles.titleText}>{item.title}</div>
+
+                  <div style={styles.metaRow}>
+                    <span>
+                      {new Date(item.date).toLocaleDateString()}
+                    </span>
                   </div>
-                )}
-
-                {/* 画像（完全フォールバック保証） */}
-                {img ? (
-                  <img
-                    src={img}
-                    style={styles.img}
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                    }}
-                  />
-                ) : (
-                  <div style={styles.emojiBox}>
-                    {getEmoji(item.title)}
-                  </div>
-                )}
-
-                {/* タイトル */}
-                <div style={styles.titleText}>{item.title}</div>
-
-                {/* メタ */}
-                <div style={styles.metaRow}>
-                  <span>
-                    {item.date
-                      ? new Date(item.date).toLocaleDateString()
-                      : ""}
-                  </span>
-
-                  <button onClick={() => toggleFav(item)}>
-                    {isFav(item) ? "❤️" : "🤍"}
-                  </button>
                 </div>
-              </div>
+              </a>
             );
           })}
       </div>
@@ -232,9 +245,7 @@ export default function Home() {
   );
 }
 
-/* =========================
-   ■ styles
-========================= */
+/* ■ styles */
 
 const styles = {
   page: {
@@ -247,16 +258,19 @@ const styles = {
     color: "#fff",
   },
 
-  title: {
-    textAlign: "center",
-    fontSize: 18,
-    marginBottom: 10,
-  },
+  title: { textAlign: "center", fontSize: 18 },
 
-  grid: {
-    display: "grid",
-    gap: 14,
-  },
+  tabRow: { display: "flex", gap: 6, marginBottom: 10 },
+
+  searchRow: { display: "flex", gap: 6, marginBottom: 10 },
+
+  search: { flex: 2, padding: 6, borderRadius: 10, border: "none" },
+
+  select: { flex: 1, borderRadius: 10 },
+
+  filterRow: { display: "flex", gap: 6, marginBottom: 12 },
+
+  grid: { display: "grid", gap: 14 },
 
   card: {
     background: "#fff",
@@ -264,7 +278,6 @@ const styles = {
     borderRadius: 14,
     padding: 12,
     position: "relative",
-    boxShadow: "0 6px 18px rgba(0,0,0,0.25)",
   },
 
   badge: {
@@ -299,13 +312,29 @@ const styles = {
   titleText: {
     fontSize: 14,
     fontWeight: "bold",
-    marginBottom: 8,
+    marginBottom: 6,
   },
 
   metaRow: {
-    display: "flex",
-    justifyContent: "space-between",
     fontSize: 11,
     color: "#666",
   },
 };
+
+const tabBtn = (active) => ({
+  flex: 1,
+  padding: 6,
+  borderRadius: 10,
+  border: "none",
+  color: "#fff",
+  background: active ? "#00c6ff" : "#2a2f36",
+});
+
+const filterBtn = (active) => ({
+  flex: 1,
+  padding: 6,
+  borderRadius: 10,
+  border: "none",
+  color: "#fff",
+  background: active ? "#00c6ff" : "#2a2f36",
+});
