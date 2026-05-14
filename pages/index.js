@@ -10,25 +10,77 @@ const GROUPS = {
 };
 
 /* =========================
-   ■ タイトル正規化（重複対策）
+   ■ タイトル正規化（強化版）
 ========================= */
 const normalizeTitle = (title = "") => {
   return title
     .toLowerCase()
     .replace(/【.*?】/g, "")
     .replace(/\(.*?\)/g, "")
+    .replace(/スターバックスコーヒー/g, "スターバックス")
     .replace(/[^\wぁ-んァ-ン一-龥]/g, "")
-    .slice(0, 40);
+    .slice(0, 50);
 };
 
 /* =========================
-   ■ 重複統合
+   ■ 商品名っぽい部分抽出
+========================= */
+const extractCore = (title = "") => {
+  return normalizeTitle(title)
+    .replace(/新発売|発売|登場|限定|新作/g, "")
+    .replace(/202\d/g, "")
+    .slice(0, 30);
+};
+
+/* =========================
+   ■ ブランド判定（最強版）
+========================= */
+const getBrand = (item) => {
+  const text = (
+    (item.title || "") +
+    (item.link || "") +
+    (item.desc || "") +
+    (item.raw || "")
+  )
+    .toLowerCase()
+    .replace(/\s/g, "")
+    .replace(/’/g, "'")
+    .replace(/スターバックスコーヒー/g, "スターバックス");
+
+  if (/(lawson|ローソン)/.test(text)) return "ローソン";
+  if (/(7-?eleven|セブン|seven)/.test(text)) return "セブン";
+  if (/(familymart|ファミマ)/.test(text)) return "ファミマ";
+
+  if (/(starbucks|スタバ|スターバックス|sbux)/.test(text)) return "スタバ";
+  if (/(tully'?s|タリーズ|tully)/.test(text)) return "タリーズ";
+  if (/(doutor|ドトール)/.test(text)) return "ドトール";
+
+  if (/(meiji|明治)/.test(text)) return "明治";
+  if (/(morinaga|森永)/.test(text)) return "森永";
+  if (/(glico|グリコ)/.test(text)) return "グリコ";
+  if (/(lotte|ロッテ)/.test(text)) return "ロッテ";
+
+  return "";
+};
+
+const getBrandColor = (brand) => {
+  if (brand === "セブン") return "#ff9f43";
+  if (brand === "ローソン") return "#2d7ff9";
+  if (brand === "ファミマ") return "#2ecc71";
+  return "#333";
+};
+
+/* =========================
+   ■ 重複統合（ブランド×商品）
 ========================= */
 const dedupeItems = (items) => {
   const map = new Map();
 
   items.forEach((item) => {
-    const key = normalizeTitle(item.title);
+    const brand = getBrand(item);
+    const core = extractCore(item.title);
+
+    const key = brand + "_" + core;
 
     let foundKey = null;
 
@@ -49,43 +101,6 @@ const dedupeItems = (items) => {
   return Array.from(map.values()).map((group) =>
     group.sort((a, b) => new Date(b.date) - new Date(a.date))[0]
   );
-};
-
-/* =========================
-   ■ ブランド判定
-========================= */
-const getBrand = (item) => {
-  const text = (
-    (item.title || "") +
-    (item.link || "") +
-    (item.desc || "") +
-    (item.raw || "")
-  )
-    .toLowerCase()
-    .replace(/\s/g, "")
-    .replace(/’/g, "'");
-
-  if (/(lawson|ローソン)/.test(text)) return "ローソン";
-  if (/(7-?eleven|セブン|seven)/.test(text)) return "セブン";
-  if (/(familymart|ファミマ)/.test(text)) return "ファミマ";
-
-  if (/(starbucks|スタバ)/.test(text)) return "スタバ";
-  if (/(tully'?s|タリーズ|tully)/.test(text)) return "タリーズ";
-  if (/(doutor|ドトール)/.test(text)) return "ドトール";
-
-  if (/(meiji|明治)/.test(text)) return "明治";
-  if (/(morinaga|森永)/.test(text)) return "森永";
-  if (/(glico|グリコ)/.test(text)) return "グリコ";
-  if (/(lotte|ロッテ)/.test(text)) return "ロッテ";
-
-  return "";
-};
-
-const getBrandColor = (brand) => {
-  if (brand === "セブン") return "#ff9f43";
-  if (brand === "ローソン") return "#2d7ff9";
-  if (brand === "ファミマ") return "#2ecc71";
-  return "#333";
 };
 
 /* =========================
@@ -285,9 +300,7 @@ export default function Home() {
                   <div style={styles.titleText}>{item.title}</div>
 
                   <div style={styles.metaRow}>
-                    <span>
-                      {new Date(item.date).toLocaleDateString()}
-                    </span>
+                    {new Date(item.date).toLocaleDateString()}
                   </div>
                 </div>
               </a>
