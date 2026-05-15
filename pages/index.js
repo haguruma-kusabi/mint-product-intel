@@ -23,7 +23,7 @@ const getBrand = (item) => {
 
   if (/(lawson|ローソン)/.test(text)) return "ローソン";
   if (/(7-?eleven|セブン|seven)/.test(text)) return "セブン";
-  if (/(familymart|ファミマ|ファミリーマート)/.test(text)) return "ファミマ";
+  if (/(familymart|ファミマ)/.test(text)) return "ファミマ";
 
   if (/(starbucks|スタバ|スターバックス|sbux)/.test(text)) return "スタバ";
   if (/(tully'?s|タリーズ|tully)/.test(text)) return "タリーズ";
@@ -128,13 +128,14 @@ export default function Home() {
 
   return (
     <div style={styles.page}>
-      <h1 style={styles.title}>CHOCO 🌿 SPOT</h1>
+      <h1 style={styles.title}>🍫 mint intel</h1>
 
       {/* タブ */}
       <div style={styles.tabRow}>
         <button onClick={() => setTab("all")} style={tabBtn(tab === "all")}>
           新着
         </button>
+
         <button onClick={() => setTab("fav")} style={tabBtn(tab === "fav")}>
           お気に入り
         </button>
@@ -174,12 +175,13 @@ export default function Home() {
         ))}
       </div>
 
-      {/* ローディングUI */}
+      {/* ローディング */}
       {loading && (
         <>
-          <div style={{ marginBottom: 10, textAlign: "center", fontSize: 12 }}>
+          <div style={styles.loadingText}>
             読み込み中...
           </div>
+
           {[1, 2, 3].map((i) => (
             <div key={i} style={styles.skeleton} />
           ))}
@@ -192,37 +194,63 @@ export default function Home() {
           filtered.map((item, i) => {
             const brand = getBrand(item);
 
-            return (
-              <a
-                key={i}
-                href={item.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ textDecoration: "none" }}
-              >
-                <div style={styles.card}>
-                  {brand && (
-                    <div
-                      style={{
-                        ...styles.badge,
-                        background: getBrandColor(brand),
-                      }}
-                    >
-                      {brand}
-                    </div>
-                  )}
+            const isFav = favorites.some(
+              (f) => f.link === item.link
+            );
 
+            return (
+              <div key={i} style={styles.card}>
+                {/* ブランド */}
+                {brand && (
+                  <div
+                    style={{
+                      ...styles.badge,
+                      background: getBrandColor(brand),
+                    }}
+                  >
+                    {brand}
+                  </div>
+                )}
+
+                {/* 画像 */}
+                <a
+                  href={item.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ textDecoration: "none" }}
+                >
                   <div style={styles.emojiBox}>
                     {getEmoji(item.title)}
                   </div>
+                </a>
 
-                  <div style={styles.titleText}>{item.title}</div>
-
-                  <div style={styles.metaRow}>
-                    {new Date(item.date).toLocaleDateString()}
+                {/* タイトル */}
+                <a
+                  href={item.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={styles.titleLink}
+                >
+                  <div style={styles.titleText}>
+                    {item.title}
                   </div>
+                </a>
+
+                {/* 日付 */}
+                <div style={styles.metaRow}>
+                  {new Date(item.date).toLocaleDateString()}
                 </div>
-              </a>
+
+                {/* アクション */}
+                <div style={styles.actionRow}>
+                  <button
+                    onClick={() => toggleFav(item)}
+                    style={styles.favBtn}
+                  >
+                    {isFav ? "❤️" : "🤍"}
+                  </button>
+                </div>
+              </div>
             );
           })}
       </div>
@@ -245,19 +273,53 @@ const styles = {
     color: "#fff",
   },
 
-  title: { textAlign: "center", fontSize: 18 },
+  title: {
+    textAlign: "center",
+    fontSize: 18,
+    marginBottom: 12,
+  },
 
-  tabRow: { display: "flex", gap: 6, marginBottom: 10 },
+  tabRow: {
+    display: "flex",
+    gap: 6,
+    marginBottom: 10,
+  },
 
-  searchRow: { display: "flex", gap: 6, marginBottom: 10 },
+  searchRow: {
+    display: "flex",
+    gap: 6,
+    marginBottom: 10,
+  },
 
-  search: { flex: 2, padding: 6, borderRadius: 10, border: "none" },
+  search: {
+    flex: 2,
+    padding: 8,
+    borderRadius: 10,
+    border: "none",
+  },
 
-  select: { flex: 1, borderRadius: 10 },
+  select: {
+    flex: 1,
+    borderRadius: 10,
+    border: "none",
+  },
 
-  filterRow: { display: "flex", gap: 6, marginBottom: 12 },
+  filterRow: {
+    display: "flex",
+    gap: 6,
+    marginBottom: 12,
+  },
 
-  grid: { display: "grid", gap: 14 },
+  loadingText: {
+    textAlign: "center",
+    fontSize: 12,
+    marginBottom: 10,
+  },
+
+  grid: {
+    display: "grid",
+    gap: 14,
+  },
 
   card: {
     background: "#fff",
@@ -265,6 +327,7 @@ const styles = {
     borderRadius: 14,
     padding: 12,
     position: "relative",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.18)",
   },
 
   badge: {
@@ -275,6 +338,7 @@ const styles = {
     fontSize: 10,
     padding: "2px 6px",
     borderRadius: 6,
+    zIndex: 2,
   },
 
   emojiBox: {
@@ -285,18 +349,37 @@ const styles = {
     fontSize: 40,
     background: "#eef6f6",
     borderRadius: 10,
-    marginBottom: 8,
+    marginBottom: 10,
+  },
+
+  titleLink: {
+    textDecoration: "none",
+    color: "#111",
   },
 
   titleText: {
     fontSize: 14,
     fontWeight: "bold",
-    marginBottom: 6,
+    marginBottom: 8,
+    lineHeight: 1.5,
   },
 
   metaRow: {
     fontSize: 11,
     color: "#666",
+  },
+
+  actionRow: {
+    display: "flex",
+    justifyContent: "flex-end",
+    marginTop: 8,
+  },
+
+  favBtn: {
+    border: "none",
+    background: "transparent",
+    fontSize: 22,
+    cursor: "pointer",
   },
 
   skeleton: {
@@ -310,7 +393,7 @@ const styles = {
 
 const tabBtn = (active) => ({
   flex: 1,
-  padding: 6,
+  padding: 8,
   borderRadius: 10,
   border: "none",
   color: "#fff",
@@ -319,7 +402,7 @@ const tabBtn = (active) => ({
 
 const filterBtn = (active) => ({
   flex: 1,
-  padding: 6,
+  padding: 8,
   borderRadius: 10,
   border: "none",
   color: "#fff",
@@ -329,6 +412,7 @@ const filterBtn = (active) => ({
 /* アニメーション */
 if (typeof document !== "undefined") {
   const style = document.createElement("style");
+
   style.innerHTML = `
     @keyframes pulse {
       0% { opacity: 0.5; }
@@ -336,5 +420,6 @@ if (typeof document !== "undefined") {
       100% { opacity: 0.5; }
     }
   `;
+
   document.head.appendChild(style);
 }
