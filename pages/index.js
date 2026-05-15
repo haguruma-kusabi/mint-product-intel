@@ -25,9 +25,14 @@ const getBrand = (item) => {
   if (/(7-?eleven|セブン|seven)/.test(text)) return "セブン";
   if (/(familymart|ファミマ)/.test(text)) return "ファミマ";
 
-  if (/(starbucks|スタバ|スターバックス|sbux)/.test(text)) return "スタバ";
-  if (/(tully'?s|タリーズ|tully)/.test(text)) return "タリーズ";
-  if (/(doutor|ドトール)/.test(text)) return "ドトール";
+  if (/(starbucks|スタバ|スターバックス|sbux)/.test(text))
+    return "スタバ";
+
+  if (/(tully'?s|タリーズ|tully)/.test(text))
+    return "タリーズ";
+
+  if (/(doutor|ドトール)/.test(text))
+    return "ドトール";
 
   if (/(meiji|明治)/.test(text)) return "明治";
   if (/(morinaga|森永)/.test(text)) return "森永";
@@ -44,6 +49,7 @@ const getBrandColor = (brand) => {
   if (brand === "セブン") return "#ff9f43";
   if (brand === "ローソン") return "#2d7ff9";
   if (brand === "ファミマ") return "#2ecc71";
+
   return "#333";
 };
 
@@ -55,6 +61,7 @@ const getEmoji = (text = "") => {
   if (/スイーツ|ケーキ/.test(text)) return "🍰";
   if (/ドリンク/.test(text)) return "🥤";
   if (/チョコ/.test(text)) return "🍫";
+
   return "🍃";
 };
 
@@ -66,27 +73,76 @@ export default function Home() {
   const [keyword, setKeyword] = useState("");
   const [activeGroups, setActiveGroups] = useState([]);
   const [range, setRange] = useState(14);
+
   const [tab, setTab] = useState("all");
   const [loading, setLoading] = useState(true);
 
+  const [unreadOnly, setUnreadOnly] = useState(false);
+
+  /* =========================
+     ■ 初期化
+  ========================= */
   useEffect(() => {
     fetchData();
 
-    const savedFav = localStorage.getItem("mint-fav");
+    const savedFav =
+      localStorage.getItem("mint-fav");
+
     if (savedFav) {
       setFavorites(JSON.parse(savedFav));
     }
 
-    const savedRead = localStorage.getItem("mint-read");
+    const savedRead =
+      localStorage.getItem("mint-read");
+
     if (savedRead) {
       setReadItems(JSON.parse(savedRead));
     }
+
+    const savedScroll =
+      sessionStorage.getItem("mint-scroll");
+
+    if (savedScroll) {
+      setTimeout(() => {
+        window.scrollTo(
+          0,
+          Number(savedScroll)
+        );
+      }, 100);
+    }
   }, []);
 
+  /* =========================
+     ■ スクロール保存
+  ========================= */
+  useEffect(() => {
+    const saveScroll = () => {
+      sessionStorage.setItem(
+        "mint-scroll",
+        window.scrollY
+      );
+    };
+
+    window.addEventListener(
+      "scroll",
+      saveScroll
+    );
+
+    return () =>
+      window.removeEventListener(
+        "scroll",
+        saveScroll
+      );
+  }, []);
+
+  /* =========================
+     ■ データ取得
+  ========================= */
   const fetchData = async () => {
     try {
       const res = await fetch("/api/news");
       const data = await res.json();
+
       setItems(data);
     } finally {
       setLoading(false);
@@ -102,7 +158,9 @@ export default function Home() {
     );
 
     const updated = exists
-      ? favorites.filter((f) => f.link !== item.link)
+      ? favorites.filter(
+          (f) => f.link !== item.link
+        )
       : [...favorites, item];
 
     setFavorites(updated);
@@ -114,7 +172,7 @@ export default function Home() {
   };
 
   /* =========================
-     ■ 既読
+     ■ 既読登録
   ========================= */
   const markAsRead = (link) => {
     if (readItems.includes(link)) return;
@@ -130,7 +188,16 @@ export default function Home() {
   };
 
   /* =========================
-     ■ フィルタ
+     ■ 既読リセット
+  ========================= */
+  const clearRead = () => {
+    localStorage.removeItem("mint-read");
+
+    setReadItems([]);
+  };
+
+  /* =========================
+     ■ グループ切替
   ========================= */
   const toggleGroup = (g) => {
     setActiveGroups((prev) =>
@@ -140,6 +207,9 @@ export default function Home() {
     );
   };
 
+  /* =========================
+     ■ フィルタ
+  ========================= */
   const baseList =
     tab === "fav" ? favorites : items;
 
@@ -172,11 +242,19 @@ export default function Home() {
 
     if (diff > range) return false;
 
+    if (
+      unreadOnly &&
+      readItems.includes(item.link)
+    ) {
+      return false;
+    }
+
     return true;
   });
 
   return (
     <div style={styles.page}>
+      {/* タイトル */}
       <h1 style={styles.title}>
         CHOCO 🌿 SPOT
       </h1>
@@ -238,6 +316,32 @@ export default function Home() {
         ))}
       </div>
 
+      {/* 未読のみ */}
+      <div style={styles.utilityRow}>
+        <button
+          onClick={() =>
+            setUnreadOnly(!unreadOnly)
+          }
+          style={utilityBtn(unreadOnly)}
+        >
+          未読のみ
+        </button>
+
+        <button
+          onClick={clearRead}
+          style={styles.resetBtn}
+        >
+          既読リセット
+        </button>
+      </div>
+
+      {/* 件数 */}
+      {!loading && (
+        <div style={styles.hitText}>
+          {filtered.length}件ヒット
+        </div>
+      )}
+
       {/* ローディング */}
       {loading && (
         <>
@@ -285,10 +389,10 @@ export default function Home() {
                   </div>
                 )}
 
-                {/* READ */}
+                {/* 既読 */}
                 {isRead && (
                   <div style={styles.readBadge}>
-                    READ
+                    既読
                   </div>
                 )}
 
@@ -413,7 +517,19 @@ const styles = {
   filterRow: {
     display: "flex",
     gap: 6,
+    marginBottom: 10,
+  },
+
+  utilityRow: {
+    display: "flex",
+    gap: 6,
+    marginBottom: 10,
+  },
+
+  hitText: {
+    fontSize: 12,
     marginBottom: 12,
+    color: "#ddd",
   },
 
   loadingText: {
@@ -516,6 +632,15 @@ const styles = {
     cursor: "pointer",
   },
 
+  resetBtn: {
+    flex: 1,
+    border: "none",
+    borderRadius: 10,
+    background: "#57606f",
+    color: "#fff",
+    padding: 8,
+  },
+
   skeleton: {
     height: 180,
     borderRadius: 14,
@@ -547,7 +672,18 @@ const filterBtn = (active) => ({
     : "#2a2f36",
 });
 
-/* アニメーション */
+const utilityBtn = (active) => ({
+  flex: 1,
+  padding: 8,
+  borderRadius: 10,
+  border: "none",
+  color: "#fff",
+  background: active
+    ? "#00c6ff"
+    : "#2a2f36",
+});
+
+/* pulse animation */
 if (typeof document !== "undefined") {
   const style =
     document.createElement("style");
