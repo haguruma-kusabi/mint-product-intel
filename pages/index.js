@@ -21,7 +21,8 @@ const getBrand = (item) => {
     .replace(/\s/g, "")
     .replace(/スターバックスコーヒー/g, "スターバックス");
 
-  if (/(lawson|ローソン)/.test(text)) return "ローソン";
+  if (/(lawson|ローソン)/.test(text))
+    return "ローソン";
 
   if (/(7-?eleven|セブン|セブンイレブン|seven)/.test(text))
     return "セブン";
@@ -281,7 +282,6 @@ export default function Home() {
     <div style={styles.page}>
       {/* 固定ヘッダー */}
       <div style={styles.sticky}>
-        {/* タイトル */}
         <h1 style={styles.title}>
           CHOCO 🌿 SPOT
         </h1>
@@ -387,131 +387,162 @@ export default function Home() {
         )}
       </div>
 
-      {/* ローディング */}
-      {loading && (
-        <>
-          <div style={styles.loadingText}>
-            読み込み中...
-          </div>
+      {/* スクロール固定余白 */}
+      <div style={styles.contentArea}>
+        {/* ローディング */}
+        {loading && (
+          <>
+            <div style={styles.loadingText}>
+              読み込み中...
+            </div>
 
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              style={styles.skeleton}
-            />
-          ))}
-        </>
-      )}
-
-      {/* 空状態 */}
-      {!loading &&
-        filtered.length === 0 && (
-          <div style={styles.emptyBox}>
-            条件に一致する記事がありません
-          </div>
-        )}
-
-      {/* カード一覧 */}
-      <div style={styles.grid}>
-        {!loading &&
-          filtered.map((item, i) => {
-            const brand = getBrand(item);
-
-            const isFav = favorites.some(
-              (f) => f.link === item.link
-            );
-
-            const isRead =
-              readItems.includes(item.link);
-
-            const isNew =
-              (new Date() -
-                new Date(item.date)) /
-                (1000 * 60 * 60 * 24) <=
-              3;
-
-            return (
+            {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                style={styles.card(isRead)}
-              >
-                {/* NEW */}
-                {isNew && (
-                  <div style={styles.newBadge}>
-                    NEW
-                  </div>
-                )}
+                style={styles.skeleton}
+              />
+            ))}
+          </>
+        )}
 
-                {/* 既読 */}
-                {isRead && (
-                  <div style={styles.readBadge}>
-                    既読
-                  </div>
-                )}
+        {/* 空状態 */}
+        {!loading &&
+          filtered.length === 0 && (
+            <div style={styles.emptyBox}>
+              条件に一致する記事がありません
+            </div>
+          )}
 
-                {/* ブランド */}
+        {/* カード一覧 */}
+        <div style={styles.grid}>
+          {!loading &&
+            filtered.map((item, i) => {
+              const brand = getBrand(item);
+
+              const isFav =
+                favorites.some(
+                  (f) =>
+                    f.link === item.link
+                );
+
+              const isRead =
+                readItems.includes(item.link);
+
+              const isNew =
+                (new Date() -
+                  new Date(item.date)) /
+                  (1000 *
+                    60 *
+                    60 *
+                    24) <=
+                3;
+
+              return (
                 <div
-                  style={{
-                    ...styles.brandBadge,
-                    background:
-                      getBrandColor(brand),
-                  }}
+                  key={i}
+                  style={styles.card(isRead)}
                 >
-                  {brand}
-                </div>
+                  {/* NEW */}
+                  {isNew && (
+                    <div
+                      style={styles.newBadge}
+                    >
+                      NEW
+                    </div>
+                  )}
 
-                {/* 絵文字 */}
-                <a
-                  href={item.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() =>
-                    markAsRead(item.link)
-                  }
-                  style={{
-                    textDecoration: "none",
-                  }}
-                >
-                  <div style={styles.emojiBox}>
-                    {getEmoji(item.title)}
-                  </div>
-                </a>
+                  {/* 既読 */}
+                  {isRead && (
+                    <div
+                      style={styles.readBadge}
+                    >
+                      既読
+                    </div>
+                  )}
 
-                {/* タイトル */}
-                <a
-                  href={item.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() =>
-                    markAsRead(item.link)
-                  }
-                  style={styles.titleLink}
-                >
-                  <div style={styles.titleText}>
-                    {item.title}
-                  </div>
-                </a>
-
-                {/* 下部 */}
-                <div style={styles.bottomRow}>
-                  <div style={styles.dateText}>
-                    {new Date(
-                      item.date
-                    ).toLocaleDateString()}
-                  </div>
-
-                  <button
-                    onClick={() =>
-                      toggleFav(item)
-                    }
-                    style={styles.favBtn}
+                  {/* ブランド */}
+                  <div
+                    style={{
+                      ...styles.brandBadge,
+                      background:
+                        getBrandColor(
+                          brand
+                        ),
+                    }}
                   >
-                    {isFav ? "❤️" : "🤍"}
-                  </button>
+                    {brand}
+                  </div>
+
+                  {/* 絵文字 */}
+                  <a
+                    href={item.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() =>
+                      markAsRead(
+                        item.link
+                      )
+                    }
+                    style={{
+                      textDecoration:
+                        "none",
+                    }}
+                  >
+                    <div
+                      style={styles.emojiBox}
+                    >
+                      {getEmoji(
+                        item.title
+                      )}
+                    </div>
+                  </a>
+
+                  {/* タイトル */}
+                  <a
+                    href={item.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() =>
+                      markAsRead(
+                        item.link
+                      )
+                    }
+                    style={styles.titleLink}
+                  >
+                    <div
+                      style={styles.titleText}
+                    >
+                      {item.title}
+                    </div>
+                  </a>
+
+                  {/* 下部 */}
+                  <div
+                    style={styles.bottomRow}
+                  >
+                    <div
+                      style={styles.dateText}
+                    >
+                      {new Date(
+                        item.date
+                      ).toLocaleDateString()}
+                    </div>
+
+                    <button
+                      onClick={() =>
+                        toggleFav(item)
+                      }
+                      style={styles.favBtn}
+                    >
+                      {isFav
+                        ? "❤️"
+                        : "🤍"}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+        </div>
       </div>
     </div>
   );
@@ -556,11 +587,22 @@ const styles = {
 
     backdropFilter: "blur(10px)",
 
-    background: "rgba(15,32,39,0.92)",
+    background:
+      "rgba(15,32,39,0.92)",
 
     flexShrink: 0,
   },
 
+  /* 固定余白エリア */
+  contentArea: {
+    flex: 1,
+
+    overflow: "hidden",
+
+    paddingBottom: 140,
+  },
+
+  /* ここだけスクロール */
   grid: {
     display: "grid",
 
@@ -568,9 +610,7 @@ const styles = {
 
     overflowY: "auto",
 
-    flex: 1,
-
-    paddingBottom: 140,
+    height: "100%",
 
     scrollbarWidth: "none",
 
@@ -644,7 +684,8 @@ const styles = {
   infoRow: {
     display: "flex",
 
-    justifyContent: "space-between",
+    justifyContent:
+      "space-between",
 
     fontSize: 12,
 
@@ -790,7 +831,8 @@ const styles = {
   bottomRow: {
     display: "flex",
 
-    justifyContent: "space-between",
+    justifyContent:
+      "space-between",
 
     alignItems: "center",
 
@@ -852,7 +894,8 @@ const styles = {
 
     marginBottom: 10,
 
-    animation: "pulse 1.5s infinite",
+    animation:
+      "pulse 1.5s infinite",
   },
 };
 
@@ -910,7 +953,7 @@ const utilityBtn = (active) => ({
     : "#2a2f36",
 });
 
-/* pulse animation */
+/* scrollbar非表示 */
 if (typeof document !== "undefined") {
   const style =
     document.createElement("style");
