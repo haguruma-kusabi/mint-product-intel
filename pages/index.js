@@ -128,7 +128,7 @@ export default function Home() {
 
   return (
     <div style={styles.page}>
-      <h1 style={styles.title}>🍫 mint intel</h1>
+      <h1 style={styles.title}>CHOCO 🌿 SPOT</h1>
 
       {/* タブ */}
       <div style={styles.tabRow}>
