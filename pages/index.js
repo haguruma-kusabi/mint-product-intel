@@ -37,6 +37,9 @@ const getBrand = (item) => {
   return "";
 };
 
+/* =========================
+   ■ ブランドカラー
+========================= */
 const getBrandColor = (brand) => {
   if (brand === "セブン") return "#ff9f43";
   if (brand === "ローソン") return "#2d7ff9";
@@ -58,6 +61,8 @@ const getEmoji = (text = "") => {
 export default function Home() {
   const [items, setItems] = useState([]);
   const [favorites, setFavorites] = useState([]);
+  const [readItems, setReadItems] = useState([]);
+
   const [keyword, setKeyword] = useState("");
   const [activeGroups, setActiveGroups] = useState([]);
   const [range, setRange] = useState(14);
@@ -67,8 +72,15 @@ export default function Home() {
   useEffect(() => {
     fetchData();
 
-    const saved = localStorage.getItem("mint-fav");
-    if (saved) setFavorites(JSON.parse(saved));
+    const savedFav = localStorage.getItem("mint-fav");
+    if (savedFav) {
+      setFavorites(JSON.parse(savedFav));
+    }
+
+    const savedRead = localStorage.getItem("mint-read");
+    if (savedRead) {
+      setReadItems(JSON.parse(savedRead));
+    }
   }, []);
 
   const fetchData = async () => {
@@ -81,17 +93,45 @@ export default function Home() {
     }
   };
 
+  /* =========================
+     ■ お気に入り
+  ========================= */
   const toggleFav = (item) => {
-    const exists = favorites.some((f) => f.link === item.link);
+    const exists = favorites.some(
+      (f) => f.link === item.link
+    );
 
     const updated = exists
       ? favorites.filter((f) => f.link !== item.link)
       : [...favorites, item];
 
     setFavorites(updated);
-    localStorage.setItem("mint-fav", JSON.stringify(updated));
+
+    localStorage.setItem(
+      "mint-fav",
+      JSON.stringify(updated)
+    );
   };
 
+  /* =========================
+     ■ 既読
+  ========================= */
+  const markAsRead = (link) => {
+    if (readItems.includes(link)) return;
+
+    const updated = [...readItems, link];
+
+    setReadItems(updated);
+
+    localStorage.setItem(
+      "mint-read",
+      JSON.stringify(updated)
+    );
+  };
+
+  /* =========================
+     ■ フィルタ
+  ========================= */
   const toggleGroup = (g) => {
     setActiveGroups((prev) =>
       prev.includes(g)
@@ -100,13 +140,21 @@ export default function Home() {
     );
   };
 
-  const baseList = tab === "fav" ? favorites : items;
+  const baseList =
+    tab === "fav" ? favorites : items;
 
   const filtered = baseList.filter((item) => {
-    const text = (item.title + item.link).toLowerCase();
+    const text = (
+      item.title +
+      item.link
+    ).toLowerCase();
 
-    if (keyword && !text.includes(keyword.toLowerCase()))
+    if (
+      keyword &&
+      !text.includes(keyword.toLowerCase())
+    ) {
       return false;
+    }
 
     const brand = getBrand(item);
 
@@ -114,6 +162,7 @@ export default function Home() {
       const ok = activeGroups.some((g) =>
         GROUPS[g].includes(brand)
       );
+
       if (!ok) return false;
     }
 
@@ -128,15 +177,23 @@ export default function Home() {
 
   return (
     <div style={styles.page}>
-      <h1 style={styles.title}>CHOCO 🌿 SPOT</h1>
+      <h1 style={styles.title}>
+        CHOCO 🌿 SPOT
+      </h1>
 
       {/* タブ */}
       <div style={styles.tabRow}>
-        <button onClick={() => setTab("all")} style={tabBtn(tab === "all")}>
+        <button
+          onClick={() => setTab("all")}
+          style={tabBtn(tab === "all")}
+        >
           新着
         </button>
 
-        <button onClick={() => setTab("fav")} style={tabBtn(tab === "fav")}>
+        <button
+          onClick={() => setTab("fav")}
+          style={tabBtn(tab === "fav")}
+        >
           お気に入り
         </button>
       </div>
@@ -145,14 +202,18 @@ export default function Home() {
       <div style={styles.searchRow}>
         <input
           value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
+          onChange={(e) =>
+            setKeyword(e.target.value)
+          }
           placeholder="検索"
           style={styles.search}
         />
 
         <select
           value={range}
-          onChange={(e) => setRange(Number(e.target.value))}
+          onChange={(e) =>
+            setRange(Number(e.target.value))
+          }
           style={styles.select}
         >
           <option value={3}>3日</option>
@@ -168,7 +229,9 @@ export default function Home() {
           <button
             key={g}
             onClick={() => toggleGroup(g)}
-            style={filterBtn(activeGroups.includes(g))}
+            style={filterBtn(
+              activeGroups.includes(g)
+            )}
           >
             {g}
           </button>
@@ -183,7 +246,10 @@ export default function Home() {
           </div>
 
           {[1, 2, 3].map((i) => (
-            <div key={i} style={styles.skeleton} />
+            <div
+              key={i}
+              style={styles.skeleton}
+            />
           ))}
         </>
       )}
@@ -198,14 +264,41 @@ export default function Home() {
               (f) => f.link === item.link
             );
 
+            const isRead =
+              readItems.includes(item.link);
+
+            const isNew =
+              (new Date() -
+                new Date(item.date)) /
+                (1000 * 60 * 60 * 24) <=
+              3;
+
             return (
-              <div key={i} style={styles.card}>
+              <div
+                key={i}
+                style={styles.card(isRead)}
+              >
+                {/* NEW */}
+                {isNew && (
+                  <div style={styles.newBadge}>
+                    NEW
+                  </div>
+                )}
+
+                {/* READ */}
+                {isRead && (
+                  <div style={styles.readBadge}>
+                    READ
+                  </div>
+                )}
+
                 {/* ブランド */}
                 {brand && (
                   <div
                     style={{
-                      ...styles.badge,
-                      background: getBrandColor(brand),
+                      ...styles.brandBadge,
+                      background:
+                        getBrandColor(brand),
                     }}
                   >
                     {brand}
@@ -217,7 +310,12 @@ export default function Home() {
                   href={item.link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ textDecoration: "none" }}
+                  onClick={() =>
+                    markAsRead(item.link)
+                  }
+                  style={{
+                    textDecoration: "none",
+                  }}
                 >
                   <div style={styles.emojiBox}>
                     {getEmoji(item.title)}
@@ -229,6 +327,9 @@ export default function Home() {
                   href={item.link}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() =>
+                    markAsRead(item.link)
+                  }
                   style={styles.titleLink}
                 >
                   <div style={styles.titleText}>
@@ -238,13 +339,17 @@ export default function Home() {
 
                 {/* 日付 */}
                 <div style={styles.metaRow}>
-                  {new Date(item.date).toLocaleDateString()}
+                  {new Date(
+                    item.date
+                  ).toLocaleDateString()}
                 </div>
 
-                {/* アクション */}
+                {/* お気に入り */}
                 <div style={styles.actionRow}>
                   <button
-                    onClick={() => toggleFav(item)}
+                    onClick={() =>
+                      toggleFav(item)
+                    }
                     style={styles.favBtn}
                   >
                     {isFav ? "❤️" : "🤍"}
@@ -275,8 +380,9 @@ const styles = {
 
   title: {
     textAlign: "center",
-    fontSize: 18,
-    marginBottom: 12,
+    fontSize: 22,
+    marginBottom: 14,
+    fontWeight: "bold",
   },
 
   tabRow: {
@@ -321,22 +427,50 @@ const styles = {
     gap: 14,
   },
 
-  card: {
+  card: (isRead) => ({
     background: "#fff",
     color: "#111",
     borderRadius: 14,
     padding: 12,
     position: "relative",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.18)",
+    boxShadow:
+      "0 4px 12px rgba(0,0,0,0.18)",
+    opacity: isRead ? 0.6 : 1,
+  }),
+
+  newBadge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    background: "#ff4757",
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "bold",
+    padding: "4px 8px",
+    borderRadius: 8,
+    zIndex: 2,
   },
 
-  badge: {
+  readBadge: {
+    position: "absolute",
+    top: 40,
+    left: 8,
+    background: "#57606f",
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "bold",
+    padding: "4px 8px",
+    borderRadius: 8,
+    zIndex: 2,
+  },
+
+  brandBadge: {
     position: "absolute",
     top: 8,
     right: 8,
     color: "#fff",
     fontSize: 10,
-    padding: "2px 6px",
+    padding: "3px 7px",
     borderRadius: 6,
     zIndex: 2,
   },
@@ -346,7 +480,7 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: 40,
+    fontSize: 42,
     background: "#eef6f6",
     borderRadius: 10,
     marginBottom: 10,
@@ -360,8 +494,8 @@ const styles = {
   titleText: {
     fontSize: 14,
     fontWeight: "bold",
-    marginBottom: 8,
     lineHeight: 1.5,
+    marginBottom: 8,
   },
 
   metaRow: {
@@ -397,7 +531,9 @@ const tabBtn = (active) => ({
   borderRadius: 10,
   border: "none",
   color: "#fff",
-  background: active ? "#00c6ff" : "#2a2f36",
+  background: active
+    ? "#00c6ff"
+    : "#2a2f36",
 });
 
 const filterBtn = (active) => ({
@@ -406,12 +542,15 @@ const filterBtn = (active) => ({
   borderRadius: 10,
   border: "none",
   color: "#fff",
-  background: active ? "#00c6ff" : "#2a2f36",
+  background: active
+    ? "#00c6ff"
+    : "#2a2f36",
 });
 
 /* アニメーション */
 if (typeof document !== "undefined") {
-  const style = document.createElement("style");
+  const style =
+    document.createElement("style");
 
   style.innerHTML = `
     @keyframes pulse {
