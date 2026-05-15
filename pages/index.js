@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 const GROUPS = {
   コンビニ: ["ローソン", "セブン", "ファミマ"],
   カフェ: ["スタバ", "タリーズ", "ドトール"],
-  メーカー: ["明治", "森永", "グリコ", "ロッテ"],
+  その他: ["その他"],
 };
 
 /* =========================
@@ -22,10 +22,17 @@ const getBrand = (item) => {
     .replace(/スターバックスコーヒー/g, "スターバックス");
 
   if (/(lawson|ローソン)/.test(text)) return "ローソン";
-  if (/(7-?eleven|セブン|seven)/.test(text)) return "セブン";
-  if (/(familymart|ファミマ)/.test(text)) return "ファミマ";
+  if (/(7-?eleven|セブン|セブンイレブン|seven)/.test(text))
+    return "セブン";
 
-  if (/(starbucks|スタバ|スターバックス|sbux)/.test(text))
+  if (/(familymart|ファミマ|ファミリーマート)/.test(text))
+    return "ファミマ";
+
+  if (
+    /(starbucks|スタバ|スターバックス|sbux)/.test(
+      text
+    )
+  )
     return "スタバ";
 
   if (/(tully'?s|タリーズ|tully)/.test(text))
@@ -34,12 +41,7 @@ const getBrand = (item) => {
   if (/(doutor|ドトール)/.test(text))
     return "ドトール";
 
-  if (/(meiji|明治)/.test(text)) return "明治";
-  if (/(morinaga|森永)/.test(text)) return "森永";
-  if (/(glico|グリコ)/.test(text)) return "グリコ";
-  if (/(lotte|ロッテ)/.test(text)) return "ロッテ";
-
-  return "";
+  return "その他";
 };
 
 /* =========================
@@ -50,7 +52,11 @@ const getBrandColor = (brand) => {
   if (brand === "ローソン") return "#2d7ff9";
   if (brand === "ファミマ") return "#2ecc71";
 
-  return "#3a3a3a";
+  if (brand === "スタバ") return "#0f9d58";
+  if (brand === "タリーズ") return "#b71c1c";
+  if (brand === "ドトール") return "#795548";
+
+  return "#666";
 };
 
 /* =========================
@@ -59,7 +65,9 @@ const getBrandColor = (brand) => {
 const getEmoji = (text = "") => {
   if (/アイス/.test(text)) return "🍨";
   if (/スイーツ|ケーキ/.test(text)) return "🍰";
-  if (/ドリンク|フラペチーノ/.test(text)) return "🥤";
+  if (/ドリンク|フラペチーノ/.test(text))
+    return "🥤";
+
   if (/チョコ/.test(text)) return "🍫";
 
   return "🍃";
@@ -68,9 +76,12 @@ const getEmoji = (text = "") => {
 export default function Home() {
   const [items, setItems] = useState([]);
   const [favorites, setFavorites] = useState([]);
-  const [readItems, setReadItems] = useState([]);
+  const [readItems, setReadItems] =
+    useState([]);
 
-  const [keyword, setKeyword] = useState("");
+  const [keyword, setKeyword] =
+    useState("");
+
   const [activeGroups, setActiveGroups] =
     useState([]);
 
@@ -78,7 +89,8 @@ export default function Home() {
 
   const [tab, setTab] = useState("all");
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
 
   const [unreadOnly, setUnreadOnly] =
     useState(false);
@@ -536,7 +548,7 @@ export default function Home() {
 
 const styles = {
   page: {
-    padding: "0 16px 100px",
+    padding: "0 16px 140px",
     maxWidth: 520,
     margin: "0 auto",
     minHeight: "100vh",
@@ -550,9 +562,9 @@ const styles = {
     top: 0,
     zIndex: 100,
     paddingTop: 12,
-    paddingBottom: 10,
+    paddingBottom: 14,
     backdropFilter: "blur(10px)",
-    background: "rgba(15,32,39,0.88)",
+    background: "rgba(15,32,39,0.92)",
   },
 
   title: {
@@ -710,11 +722,6 @@ const styles = {
   dateText: {
     fontSize: 11,
     color: "#666",
-  },
-
-  actionRow: {
-    display: "flex",
-    justifyContent: "flex-end",
   },
 
   favBtn: {
