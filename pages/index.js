@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 /* =========================
    ■ グループ
@@ -43,14 +43,14 @@ const getBrand = (item) => {
 };
 
 /* =========================
-   ■ ブランドカラー
+   ■ ブランド色
 ========================= */
 const getBrandColor = (brand) => {
   if (brand === "セブン") return "#ff9f43";
   if (brand === "ローソン") return "#2d7ff9";
   if (brand === "ファミマ") return "#2ecc71";
 
-  return "#333";
+  return "#3a3a3a";
 };
 
 /* =========================
@@ -59,7 +59,7 @@ const getBrandColor = (brand) => {
 const getEmoji = (text = "") => {
   if (/アイス/.test(text)) return "🍨";
   if (/スイーツ|ケーキ/.test(text)) return "🍰";
-  if (/ドリンク/.test(text)) return "🥤";
+  if (/ドリンク|フラペチーノ/.test(text)) return "🥤";
   if (/チョコ/.test(text)) return "🍫";
 
   return "🍃";
@@ -71,13 +71,20 @@ export default function Home() {
   const [readItems, setReadItems] = useState([]);
 
   const [keyword, setKeyword] = useState("");
-  const [activeGroups, setActiveGroups] = useState([]);
+  const [activeGroups, setActiveGroups] =
+    useState([]);
+
   const [range, setRange] = useState(14);
 
   const [tab, setTab] = useState("all");
+
   const [loading, setLoading] = useState(true);
 
-  const [unreadOnly, setUnreadOnly] = useState(false);
+  const [unreadOnly, setUnreadOnly] =
+    useState(false);
+
+  const [lastUpdated, setLastUpdated] =
+    useState("");
 
   /* =========================
      ■ 初期化
@@ -141,9 +148,19 @@ export default function Home() {
   const fetchData = async () => {
     try {
       const res = await fetch("/api/news");
+
       const data = await res.json();
 
       setItems(data);
+
+      const now = new Date();
+
+      setLastUpdated(
+        now.toLocaleTimeString("ja-JP", {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      );
     } finally {
       setLoading(false);
     }
@@ -172,7 +189,7 @@ export default function Home() {
   };
 
   /* =========================
-     ■ 既読登録
+     ■ 既読
   ========================= */
   const markAsRead = (link) => {
     if (readItems.includes(link)) return;
@@ -192,7 +209,6 @@ export default function Home() {
   ========================= */
   const clearRead = () => {
     localStorage.removeItem("mint-read");
-
     setReadItems([]);
   };
 
@@ -213,134 +229,174 @@ export default function Home() {
   const baseList =
     tab === "fav" ? favorites : items;
 
-  const filtered = baseList.filter((item) => {
-    const text = (
-      item.title +
-      item.link
-    ).toLowerCase();
+  const filtered = useMemo(() => {
+    return baseList.filter((item) => {
+      const text = (
+        item.title +
+        item.link
+      ).toLowerCase();
 
-    if (
-      keyword &&
-      !text.includes(keyword.toLowerCase())
-    ) {
-      return false;
-    }
+      if (
+        keyword &&
+        !text.includes(keyword.toLowerCase())
+      ) {
+        return false;
+      }
 
-    const brand = getBrand(item);
+      const brand = getBrand(item);
 
-    if (activeGroups.length > 0) {
-      const ok = activeGroups.some((g) =>
-        GROUPS[g].includes(brand)
-      );
+      if (activeGroups.length > 0) {
+        const ok = activeGroups.some((g) =>
+          GROUPS[g].includes(brand)
+        );
 
-      if (!ok) return false;
-    }
+        if (!ok) return false;
+      }
 
+      const diff =
+        (new Date() - new Date(item.date)) /
+        (1000 * 60 * 60 * 24);
+
+      if (diff > range) return false;
+
+      if (
+        unreadOnly &&
+        readItems.includes(item.link)
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [
+    baseList,
+    keyword,
+    activeGroups,
+    range,
+    unreadOnly,
+    readItems,
+  ]);
+
+  /* =========================
+     ■ 今日件数
+  ========================= */
+  const todayCount = items.filter((item) => {
     const diff =
       (new Date() - new Date(item.date)) /
       (1000 * 60 * 60 * 24);
 
-    if (diff > range) return false;
-
-    if (
-      unreadOnly &&
-      readItems.includes(item.link)
-    ) {
-      return false;
-    }
-
-    return true;
-  });
+    return diff <= 1;
+  }).length;
 
   return (
     <div style={styles.page}>
-      {/* タイトル */}
-      <h1 style={styles.title}>
-        CHOCO 🌿 SPOT
-      </h1>
+      {/* 固定ヘッダー */}
+      <div style={styles.sticky}>
+        {/* タイトル */}
+        <h1 style={styles.title}>
+          CHOCO 🌿 SPOT
+        </h1>
 
-      {/* タブ */}
-      <div style={styles.tabRow}>
-        <button
-          onClick={() => setTab("all")}
-          style={tabBtn(tab === "all")}
-        >
-          新着
-        </button>
-
-        <button
-          onClick={() => setTab("fav")}
-          style={tabBtn(tab === "fav")}
-        >
-          お気に入り
-        </button>
-      </div>
-
-      {/* 検索 */}
-      <div style={styles.searchRow}>
-        <input
-          value={keyword}
-          onChange={(e) =>
-            setKeyword(e.target.value)
-          }
-          placeholder="検索"
-          style={styles.search}
-        />
-
-        <select
-          value={range}
-          onChange={(e) =>
-            setRange(Number(e.target.value))
-          }
-          style={styles.select}
-        >
-          <option value={3}>3日</option>
-          <option value={7}>7日</option>
-          <option value={14}>14日</option>
-          <option value={30}>30日</option>
-        </select>
-      </div>
-
-      {/* フィルタ */}
-      <div style={styles.filterRow}>
-        {Object.keys(GROUPS).map((g) => (
+        {/* タブ */}
+        <div style={styles.tabRow}>
           <button
-            key={g}
-            onClick={() => toggleGroup(g)}
-            style={filterBtn(
-              activeGroups.includes(g)
-            )}
+            onClick={() => setTab("all")}
+            style={tabBtn(tab === "all")}
           >
-            {g}
+            新着
           </button>
-        ))}
-      </div>
 
-      {/* 未読のみ */}
-      <div style={styles.utilityRow}>
-        <button
-          onClick={() =>
-            setUnreadOnly(!unreadOnly)
-          }
-          style={utilityBtn(unreadOnly)}
-        >
-          未読のみ
-        </button>
-
-        <button
-          onClick={clearRead}
-          style={styles.resetBtn}
-        >
-          既読リセット
-        </button>
-      </div>
-
-      {/* 件数 */}
-      {!loading && (
-        <div style={styles.hitText}>
-          {filtered.length}件ヒット
+          <button
+            onClick={() => setTab("fav")}
+            style={tabBtn(tab === "fav")}
+          >
+            お気に入り(
+            {favorites.length})
+          </button>
         </div>
-      )}
+
+        {/* 検索 */}
+        <div style={styles.searchRow}>
+          <input
+            value={keyword}
+            onChange={(e) =>
+              setKeyword(e.target.value)
+            }
+            placeholder="検索"
+            style={styles.search}
+          />
+
+          <select
+            value={range}
+            onChange={(e) =>
+              setRange(
+                Number(e.target.value)
+              )
+            }
+            style={styles.select}
+          >
+            <option value={3}>3日</option>
+            <option value={7}>7日</option>
+            <option value={14}>14日</option>
+            <option value={30}>30日</option>
+          </select>
+        </div>
+
+        {/* フィルタ */}
+        <div style={styles.filterRow}>
+          {Object.keys(GROUPS).map((g) => (
+            <button
+              key={g}
+              onClick={() =>
+                toggleGroup(g)
+              }
+              style={filterBtn(
+                activeGroups.includes(g)
+              )}
+            >
+              {g}
+            </button>
+          ))}
+        </div>
+
+        {/* ユーティリティ */}
+        <div style={styles.utilityRow}>
+          <button
+            onClick={() =>
+              setUnreadOnly(!unreadOnly)
+            }
+            style={utilityBtn(unreadOnly)}
+          >
+            未読のみ
+          </button>
+
+          <button
+            onClick={clearRead}
+            style={styles.resetBtn}
+          >
+            既読リセット
+          </button>
+        </div>
+
+        {/* 情報 */}
+        {!loading && (
+          <>
+            <div style={styles.infoRow}>
+              <span>
+                {filtered.length}件ヒット
+              </span>
+
+              <span>
+                今日 {todayCount}件
+              </span>
+            </div>
+
+            <div style={styles.updateText}>
+              最終更新 {lastUpdated}
+            </div>
+          </>
+        )}
+      </div>
 
       {/* ローディング */}
       {loading && (
@@ -357,6 +413,14 @@ export default function Home() {
           ))}
         </>
       )}
+
+      {/* 空状態 */}
+      {!loading &&
+        filtered.length === 0 && (
+          <div style={styles.emptyBox}>
+            条件に一致する記事がありません
+          </div>
+        )}
 
       {/* カード */}
       <div style={styles.grid}>
@@ -409,7 +473,7 @@ export default function Home() {
                   </div>
                 )}
 
-                {/* 画像 */}
+                {/* 絵文字 */}
                 <a
                   href={item.link}
                   target="_blank"
@@ -441,15 +505,14 @@ export default function Home() {
                   </div>
                 </a>
 
-                {/* 日付 */}
-                <div style={styles.metaRow}>
-                  {new Date(
-                    item.date
-                  ).toLocaleDateString()}
-                </div>
+                {/* 下部 */}
+                <div style={styles.bottomRow}>
+                  <div style={styles.dateText}>
+                    {new Date(
+                      item.date
+                    ).toLocaleDateString()}
+                  </div>
 
-                {/* お気に入り */}
-                <div style={styles.actionRow}>
                   <button
                     onClick={() =>
                       toggleFav(item)
@@ -473,13 +536,23 @@ export default function Home() {
 
 const styles = {
   page: {
-    padding: 14,
-    maxWidth: 560,
+    padding: "0 16px 100px",
+    maxWidth: 520,
     margin: "0 auto",
     minHeight: "100vh",
     background:
       "linear-gradient(180deg,#0f2027,#203a43,#2c5364)",
     color: "#fff",
+  },
+
+  sticky: {
+    position: "sticky",
+    top: 0,
+    zIndex: 100,
+    paddingTop: 12,
+    paddingBottom: 10,
+    backdropFilter: "blur(10px)",
+    background: "rgba(15,32,39,0.88)",
   },
 
   title: {
@@ -503,15 +576,17 @@ const styles = {
 
   search: {
     flex: 2,
-    padding: 8,
+    padding: 9,
     borderRadius: 10,
     border: "none",
+    fontSize: 13,
   },
 
   select: {
     flex: 1,
     borderRadius: 10,
     border: "none",
+    fontSize: 12,
   },
 
   filterRow: {
@@ -526,32 +601,41 @@ const styles = {
     marginBottom: 10,
   },
 
-  hitText: {
+  infoRow: {
+    display: "flex",
+    justifyContent: "space-between",
     fontSize: 12,
-    marginBottom: 12,
-    color: "#ddd",
+    color: "#d7e0e5",
+    marginBottom: 4,
+  },
+
+  updateText: {
+    fontSize: 11,
+    color: "#a9bac4",
+    marginBottom: 6,
   },
 
   loadingText: {
     textAlign: "center",
     fontSize: 12,
-    marginBottom: 10,
+    marginTop: 24,
+    marginBottom: 14,
   },
 
   grid: {
     display: "grid",
-    gap: 14,
+    gap: 18,
   },
 
   card: (isRead) => ({
     background: "#fff",
     color: "#111",
-    borderRadius: 14,
+    borderRadius: 18,
     padding: 12,
     position: "relative",
     boxShadow:
-      "0 4px 12px rgba(0,0,0,0.18)",
-    opacity: isRead ? 0.6 : 1,
+      "0 6px 16px rgba(0,0,0,0.18)",
+    opacity: isRead ? 0.65 : 1,
   }),
 
   newBadge: {
@@ -560,45 +644,47 @@ const styles = {
     left: 8,
     background: "#ff4757",
     color: "#fff",
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "bold",
-    padding: "4px 8px",
-    borderRadius: 8,
+    padding: "5px 9px",
+    borderRadius: 9,
     zIndex: 2,
+    boxShadow:
+      "0 0 10px rgba(255,71,87,0.5)",
   },
 
   readBadge: {
     position: "absolute",
-    top: 40,
+    top: 44,
     left: 8,
     background: "#57606f",
     color: "#fff",
     fontSize: 11,
     fontWeight: "bold",
-    padding: "4px 8px",
+    padding: "4px 9px",
     borderRadius: 8,
     zIndex: 2,
   },
 
   brandBadge: {
     position: "absolute",
-    top: 8,
-    right: 8,
+    top: 10,
+    right: 10,
     color: "#fff",
     fontSize: 10,
-    padding: "3px 7px",
-    borderRadius: 6,
+    padding: "4px 8px",
+    borderRadius: 8,
     zIndex: 2,
   },
 
   emojiBox: {
-    height: 160,
+    height: 105,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: 42,
+    fontSize: 38,
     background: "#eef6f6",
-    borderRadius: 10,
+    borderRadius: 12,
     marginBottom: 10,
   },
 
@@ -610,11 +696,18 @@ const styles = {
   titleText: {
     fontSize: 14,
     fontWeight: "bold",
-    lineHeight: 1.5,
-    marginBottom: 8,
+    lineHeight: 1.55,
+    marginBottom: 10,
   },
 
-  metaRow: {
+  bottomRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 2,
+  },
+
+  dateText: {
     fontSize: 11,
     color: "#666",
   },
@@ -622,14 +715,15 @@ const styles = {
   actionRow: {
     display: "flex",
     justifyContent: "flex-end",
-    marginTop: 8,
   },
 
   favBtn: {
     border: "none",
     background: "transparent",
-    fontSize: 22,
+    fontSize: 20,
     cursor: "pointer",
+    padding: 0,
+    lineHeight: 1,
   },
 
   resetBtn: {
@@ -639,11 +733,19 @@ const styles = {
     background: "#57606f",
     color: "#fff",
     padding: 8,
+    fontSize: 12,
+  },
+
+  emptyBox: {
+    textAlign: "center",
+    padding: 24,
+    fontSize: 13,
+    color: "#d7e0e5",
   },
 
   skeleton: {
-    height: 180,
-    borderRadius: 14,
+    height: 170,
+    borderRadius: 18,
     background: "#ffffff22",
     marginBottom: 10,
     animation: "pulse 1.5s infinite",
@@ -652,10 +754,11 @@ const styles = {
 
 const tabBtn = (active) => ({
   flex: 1,
-  padding: 8,
+  padding: 9,
   borderRadius: 10,
   border: "none",
   color: "#fff",
+  fontSize: 12,
   background: active
     ? "#00c6ff"
     : "#2a2f36",
@@ -667,6 +770,7 @@ const filterBtn = (active) => ({
   borderRadius: 10,
   border: "none",
   color: "#fff",
+  fontSize: 12,
   background: active
     ? "#00c6ff"
     : "#2a2f36",
@@ -678,6 +782,7 @@ const utilityBtn = (active) => ({
   borderRadius: 10,
   border: "none",
   color: "#fff",
+  fontSize: 12,
   background: active
     ? "#00c6ff"
     : "#2a2f36",
