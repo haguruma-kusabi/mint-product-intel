@@ -22,6 +22,7 @@ const getBrand = (item) => {
     .replace(/スターバックスコーヒー/g, "スターバックス");
 
   if (/(lawson|ローソン)/.test(text)) return "ローソン";
+
   if (/(7-?eleven|セブン|セブンイレブン|seven)/.test(text))
     return "セブン";
 
@@ -49,11 +50,15 @@ const getBrand = (item) => {
 ========================= */
 const getBrandColor = (brand) => {
   if (brand === "セブン") return "#ff9f43";
+
   if (brand === "ローソン") return "#2d7ff9";
+
   if (brand === "ファミマ") return "#2ecc71";
 
   if (brand === "スタバ") return "#0f9d58";
+
   if (brand === "タリーズ") return "#b71c1c";
+
   if (brand === "ドトール") return "#795548";
 
   return "#666";
@@ -64,7 +69,10 @@ const getBrandColor = (brand) => {
 ========================= */
 const getEmoji = (text = "") => {
   if (/アイス/.test(text)) return "🍨";
-  if (/スイーツ|ケーキ/.test(text)) return "🍰";
+
+  if (/スイーツ|ケーキ/.test(text))
+    return "🍰";
+
   if (/ドリンク|フラペチーノ/.test(text))
     return "🥤";
 
@@ -75,7 +83,10 @@ const getEmoji = (text = "") => {
 
 export default function Home() {
   const [items, setItems] = useState([]);
-  const [favorites, setFavorites] = useState([]);
+
+  const [favorites, setFavorites] =
+    useState([]);
+
   const [readItems, setReadItems] =
     useState([]);
 
@@ -117,41 +128,6 @@ export default function Home() {
     if (savedRead) {
       setReadItems(JSON.parse(savedRead));
     }
-
-    const savedScroll =
-      sessionStorage.getItem("mint-scroll");
-
-    if (savedScroll) {
-      setTimeout(() => {
-        window.scrollTo(
-          0,
-          Number(savedScroll)
-        );
-      }, 100);
-    }
-  }, []);
-
-  /* =========================
-     ■ スクロール保存
-  ========================= */
-  useEffect(() => {
-    const saveScroll = () => {
-      sessionStorage.setItem(
-        "mint-scroll",
-        window.scrollY
-      );
-    };
-
-    window.addEventListener(
-      "scroll",
-      saveScroll
-    );
-
-    return () =>
-      window.removeEventListener(
-        "scroll",
-        saveScroll
-      );
   }, []);
 
   /* =========================
@@ -221,6 +197,7 @@ export default function Home() {
   ========================= */
   const clearRead = () => {
     localStorage.removeItem("mint-read");
+
     setReadItems([]);
   };
 
@@ -434,7 +411,7 @@ export default function Home() {
           </div>
         )}
 
-      {/* カード */}
+      {/* カード一覧 */}
       <div style={styles.grid}>
         {!loading &&
           filtered.map((item, i) => {
@@ -473,17 +450,15 @@ export default function Home() {
                 )}
 
                 {/* ブランド */}
-                {brand && (
-                  <div
-                    style={{
-                      ...styles.brandBadge,
-                      background:
-                        getBrandColor(brand),
-                    }}
-                  >
-                    {brand}
-                  </div>
-                )}
+                <div
+                  style={{
+                    ...styles.brandBadge,
+                    background:
+                      getBrandColor(brand),
+                  }}
+                >
+                  {brand}
+                </div>
 
                 {/* 絵文字 */}
                 <a
@@ -548,224 +523,352 @@ export default function Home() {
 
 const styles = {
   page: {
-    padding: "0 16px 140px",
+    height: "100vh",
+
+    overflow: "hidden",
+
+    display: "flex",
+
+    flexDirection: "column",
+
+    padding: "0 16px",
+
     maxWidth: 520,
+
     margin: "0 auto",
-    minHeight: "100vh",
+
     background:
       "linear-gradient(180deg,#0f2027,#203a43,#2c5364)",
+
     color: "#fff",
   },
 
   sticky: {
     position: "sticky",
+
     top: 0,
+
     zIndex: 100,
+
     paddingTop: 12,
+
     paddingBottom: 14,
+
     backdropFilter: "blur(10px)",
+
     background: "rgba(15,32,39,0.92)",
+
+    flexShrink: 0,
+  },
+
+  grid: {
+    display: "grid",
+
+    gap: 18,
+
+    overflowY: "auto",
+
+    flex: 1,
+
+    paddingBottom: 140,
+
+    scrollbarWidth: "none",
+
+    msOverflowStyle: "none",
   },
 
   title: {
     textAlign: "center",
+
     fontSize: 22,
+
     marginBottom: 14,
+
     fontWeight: "bold",
   },
 
   tabRow: {
     display: "flex",
+
     gap: 6,
+
     marginBottom: 10,
   },
 
   searchRow: {
     display: "flex",
+
     gap: 6,
+
     marginBottom: 10,
   },
 
   search: {
     flex: 2,
+
     padding: 9,
+
     borderRadius: 10,
+
     border: "none",
+
     fontSize: 13,
   },
 
   select: {
     flex: 1,
+
     borderRadius: 10,
+
     border: "none",
+
     fontSize: 12,
   },
 
   filterRow: {
     display: "flex",
+
     gap: 6,
+
     marginBottom: 10,
   },
 
   utilityRow: {
     display: "flex",
+
     gap: 6,
+
     marginBottom: 10,
   },
 
   infoRow: {
     display: "flex",
+
     justifyContent: "space-between",
+
     fontSize: 12,
+
     color: "#d7e0e5",
+
     marginBottom: 4,
   },
 
   updateText: {
     fontSize: 11,
+
     color: "#a9bac4",
+
     marginBottom: 6,
   },
 
   loadingText: {
     textAlign: "center",
-    fontSize: 12,
-    marginTop: 24,
-    marginBottom: 14,
-  },
 
-  grid: {
-    display: "grid",
-    gap: 18,
+    fontSize: 12,
+
+    marginTop: 24,
+
+    marginBottom: 14,
   },
 
   card: (isRead) => ({
     background: "#fff",
+
     color: "#111",
+
     borderRadius: 18,
+
     padding: 12,
+
     position: "relative",
+
     boxShadow:
       "0 6px 16px rgba(0,0,0,0.18)",
+
     opacity: isRead ? 0.65 : 1,
   }),
 
   newBadge: {
     position: "absolute",
+
     top: 8,
+
     left: 8,
+
     background: "#ff4757",
+
     color: "#fff",
+
     fontSize: 12,
+
     fontWeight: "bold",
+
     padding: "5px 9px",
+
     borderRadius: 9,
+
     zIndex: 2,
+
     boxShadow:
       "0 0 10px rgba(255,71,87,0.5)",
   },
 
   readBadge: {
     position: "absolute",
+
     top: 44,
+
     left: 8,
+
     background: "#57606f",
+
     color: "#fff",
+
     fontSize: 11,
+
     fontWeight: "bold",
+
     padding: "4px 9px",
+
     borderRadius: 8,
+
     zIndex: 2,
   },
 
   brandBadge: {
     position: "absolute",
+
     top: 10,
+
     right: 10,
+
     color: "#fff",
+
     fontSize: 10,
+
     padding: "4px 8px",
+
     borderRadius: 8,
+
     zIndex: 2,
   },
 
   emojiBox: {
     height: 105,
+
     display: "flex",
+
     alignItems: "center",
+
     justifyContent: "center",
+
     fontSize: 38,
+
     background: "#eef6f6",
+
     borderRadius: 12,
+
     marginBottom: 10,
   },
 
   titleLink: {
     textDecoration: "none",
+
     color: "#111",
   },
 
   titleText: {
     fontSize: 14,
+
     fontWeight: "bold",
+
     lineHeight: 1.55,
+
     marginBottom: 10,
   },
 
   bottomRow: {
     display: "flex",
+
     justifyContent: "space-between",
+
     alignItems: "center",
+
     marginTop: 2,
   },
 
   dateText: {
     fontSize: 11,
+
     color: "#666",
   },
 
   favBtn: {
     border: "none",
+
     background: "transparent",
+
     fontSize: 20,
+
     cursor: "pointer",
+
     padding: 0,
+
     lineHeight: 1,
   },
 
   resetBtn: {
     flex: 1,
+
     border: "none",
+
     borderRadius: 10,
+
     background: "#57606f",
+
     color: "#fff",
+
     padding: 8,
+
     fontSize: 12,
   },
 
   emptyBox: {
     textAlign: "center",
+
     padding: 24,
+
     fontSize: 13,
+
     color: "#d7e0e5",
   },
 
   skeleton: {
     height: 170,
+
     borderRadius: 18,
+
     background: "#ffffff22",
+
     marginBottom: 10,
+
     animation: "pulse 1.5s infinite",
   },
 };
 
 const tabBtn = (active) => ({
   flex: 1,
+
   padding: 9,
+
   borderRadius: 10,
+
   border: "none",
+
   color: "#fff",
+
   fontSize: 12,
+
   background: active
     ? "#00c6ff"
     : "#2a2f36",
@@ -773,11 +876,17 @@ const tabBtn = (active) => ({
 
 const filterBtn = (active) => ({
   flex: 1,
+
   padding: 8,
+
   borderRadius: 10,
+
   border: "none",
+
   color: "#fff",
+
   fontSize: 12,
+
   background: active
     ? "#00c6ff"
     : "#2a2f36",
@@ -785,11 +894,17 @@ const filterBtn = (active) => ({
 
 const utilityBtn = (active) => ({
   flex: 1,
+
   padding: 8,
+
   borderRadius: 10,
+
   border: "none",
+
   color: "#fff",
+
   fontSize: 12,
+
   background: active
     ? "#00c6ff"
     : "#2a2f36",
@@ -805,6 +920,10 @@ if (typeof document !== "undefined") {
       0% { opacity: 0.5; }
       50% { opacity: 1; }
       100% { opacity: 0.5; }
+    }
+
+    div::-webkit-scrollbar {
+      display: none;
     }
   `;
 
